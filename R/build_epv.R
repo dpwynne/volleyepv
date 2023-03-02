@@ -485,7 +485,7 @@ build_epv_pablo <- function(my.files) {
 
   # add in pablo ratings
   #ratings <- read.csv("ranking_mapping_table.csv")
-  rank_team <- subset(ratings, rank_type == "Pablo", select = c(gender, season, school_vm, ranking))
+  rank_team <- subset(volleyR:::ratings, rank_type == "Pablo", select = c(gender, season, school_vm, ranking))
   colnames(rank_team) <- c("gender", "year", "team", "rank_team")
   rank_opp <- rank_team
   colnames(rank_opp) <- c("gender", "year", "opponent", "rank_opponent")
