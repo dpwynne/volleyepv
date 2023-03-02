@@ -450,7 +450,6 @@ build_epv_average <- function(my.files) {
 
   epv_data <- epv_data %>% relocate(player_name, skq, input_type, output_type, epv_in, epv_out, epv_added, match_date, team, opponent, skill, two_touch_ago, one_touch_ago, one_touch_future, two_touch_future, input_kcode, output_kcode, blockers)
   epv_data <- epv_data[order(epv_data$id_touch),]
-  rm(fit_input, fit_output, fit_set_output)
   print("Boom! Done.")
   return(epv_data)
 }
@@ -921,7 +920,6 @@ build_epv_pablo <- function(my.files) {
 
   epv_data <- epv_data %>% relocate(player_name, skq, input_type, output_type, epv_in, epv_out, epv_added, match_date, team, rank_team, opponent, rank_opponent, skill, two_touch_ago, one_touch_ago, one_touch_future, two_touch_future, input_kcode, output_kcode, blockers)
   epv_data <- epv_data[order(epv_data$id_touch),]
-  rm(fit_input, fit_output, fit_set_output)
   print("Boom! Done.")
   return(epv_data)
 }
