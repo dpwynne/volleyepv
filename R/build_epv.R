@@ -783,30 +783,33 @@ build_epv_pablo <- function(my.files) {
   #create models for attack eff based on location of the set
   a <- subset(epv_data, skq == "Set #" & !is.na(input_coord_x))
   fit_input_func <- function(a){
-    fit_input <<- try(lm(rally_winner ~ poly(input_coord_x,2) + poly(input_coord_y,2) + input_kcode + rank_team + rank_opponent, a), silent = TRUE)
+    fit_input <- try(lm(rally_winner ~ poly(input_coord_x,2) + poly(input_coord_y,2) + input_kcode, a), silent = TRUE)
     if (class(fit_input) == "try-error") {
-      fit_input <<- lm(rally_winner ~ poly(input_coord_x,2) + poly(input_coord_y,2) + rank_team + rank_opponent, a)
+      fit_input <- lm(rally_winner ~ poly(input_coord_x,2) + poly(input_coord_y,2), a)
     }
+    return(fit_input)
   }
 
   b <- subset(epv_data, skq == "Set #" & !is.na(output_coord_x))
   fit_output_func <- function(b){
-    fit_output <<- try(lm(rally_winner ~ poly(output_coord_x,2) + poly(output_coord_y,2) + output_kcode + rank_team + rank_opponent, b), silent = TRUE)
+    fit_output <- try(lm(rally_winner ~ poly(output_coord_x,2) + poly(output_coord_y,2) + output_kcode, b), silent = TRUE)
     if (class(fit_output) == "try-error") {
-      fit_output <<- lm(rally_winner ~ poly(output_coord_x,2) + poly(output_coord_y,2) + rank_team + rank_opponent, b)
+      fit_output <- lm(rally_winner ~ poly(output_coord_x,2) + poly(output_coord_y,2), b)
     }
+    return(fit_output)
   }
 
   fit_setoutput_func <- function(a){
-    fit_set_output <<- try(lm(rally_winner ~ poly(input_coord_x,2) + poly(input_coord_y,2) + input_kcode + blockers + rank_team + rank_opponent, a), silent = TRUE)
+    fit_set_output <- try(lm(rally_winner ~ poly(input_coord_x,2) + poly(input_coord_y,2) + input_kcode + blockers, a), silent = TRUE)
     if (class(fit_set_output) == "try-error") {
-      fit_set_output <<- lm(rally_winner ~ poly(input_coord_x,2) + poly(input_coord_y,2) + blockers + rank_team + rank_opponent, a)
+      fit_set_output <- lm(rally_winner ~ poly(input_coord_x,2) + poly(input_coord_y,2) + blockers, a)
     }
+    return(fit_set_output)
   }
 
-  fit_input_func(a)
-  fit_output_func(b)
-  fit_setoutput_func(a)
+  fit_input <- fit_input_func(a)
+  fit_output <- fit_output_func(b)
+  fit_set_output <- fit_setoutput_func(a)
 
   suppressWarnings({
     serve_baseline <- function(epv_data){tryCatch({glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "serve_baseline"), family = "binomial")}, error=function(e){NULL})}
