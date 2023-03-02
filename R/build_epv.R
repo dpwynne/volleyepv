@@ -484,7 +484,6 @@ build_epv_pablo <- function(my.files) {
   epv_data$opponent <- ifelse(epv_data$team == epv_data$visiting_team, epv_data$home_team, epv_data$opponent)
 
   # add in pablo ratings
-  #ratings <- read.csv("ranking_mapping_table.csv")
   rank_team <- subset(volleyR:::ratings, rank_type == "Pablo", select = c(gender, season, school_vm, ranking))
   colnames(rank_team) <- c("gender", "year", "team", "rank_team")
   rank_opp <- rank_team
