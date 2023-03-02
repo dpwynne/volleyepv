@@ -1,4 +1,6 @@
-build_epv_average <- function(my.files) {
+
+build_epv_average <- function(path_to_dvw) {
+  my.files <- list.files(path = path_to_dvw, pattern = "*.dvw")
   epv_data <- data.frame(matrix(ncol=0,nrow=0))
 
   for(i in 1:length(my.files)) {
@@ -451,6 +453,7 @@ build_epv_average <- function(my.files) {
 }
 
 build_epv_pablo <- function(my.files) {
+  my.files <- list.files(path = path_to_dvw, pattern = "*.dvw")
   epv_data <- data.frame(matrix(ncol=0,nrow=0))
 
   for(i in 1:length(my.files)) {
