@@ -806,16 +806,26 @@ build_epv_pablo <- function(my.files) {
   fit_setoutput_func(a)
 
   suppressWarnings({
-    serve_baseline_model <- glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "serve_baseline"), family = "binomial")
-    attack_overpass_model <- glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "attack_overpass"), family = "binomial")
-    attack_weird_model <- glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "attack_weird"), family = "binomial")
-    attack_poor_set_model <- glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "attack_poor_set"), family = "binomial")
-    block_weird_model <- glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "block_weird"), family = "binomial")
-    dig_overpass_model <- glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "dig_overpass"), family = "binomial")
-    dig_weird_model <- glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "dig_weird"), family = "binomial")
-    freeball_baseline_model <- glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "freeball_baseline"), family = "binomial")
-    set_poor_model <- glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, output_type == "set_poor"), family = "binomial")
-    block_touch_stuff_model <- glm(rally_winner ~ rank_team + rank_opponent + speed + block_time, subset(epv_data, skill=="Dig"), family = "binomial")
+    serve_baseline <- function(epv_data){tryCatch({glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "serve_baseline"), family = "binomial")}, error=function(e){NULL})}
+    attack_overpass <- function(epv_data){tryCatch({glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "attack_overpass"), family = "binomial")}, error=function(e){NULL})}
+    attack_weird <- function(epv_data){tryCatch({glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "attack_weird"), family = "binomial")}, error=function(e){NULL})}
+    attack_poor_set <- function(epv_data){tryCatch({glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "attack_poor_set"), family = "binomial")}, error=function(e){NULL})}
+    block_weird <- function(epv_data){tryCatch({glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "block_weird"), family = "binomial")}, error=function(e){NULL})}
+    dig_overpass <- function(epv_data){tryCatch({glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "dig_overpass"), family = "binomial")}, error=function(e){NULL})}
+    dig_weird <- function(epv_data){tryCatch({glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "dig_weird"), family = "binomial")}, error=function(e){NULL})}
+    freeball_baseline <- function(epv_data){tryCatch({glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "freeball_baseline"), family = "binomial")}, error=function(e){NULL})}
+    set_poor <- function(epv_data){tryCatch({glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, output_type == "set_poor"), family = "binomial")}, error=function(e){NULL})}
+    block_touch_stuff <- function(epv_data){tryCatch({glm(rally_winner ~ rank_team + rank_opponent + speed + block_time, subset(epv_data, skill=="Dig"), family = "binomial")}, error=function(e){NULL})}
+    serve_baseline_model <- serve_baseline(epv_data)
+    attack_overpass_model <- attack_overpass(epv_data)
+    attack_weird_model <- attack_weird(epv_data)
+    attack_poor_set_model <- attack_poor_set(epv_data)
+    block_weird_model <- block_weird(epv_data)
+    dig_overpass_model <- dig_overpass(epv_data)
+    dig_weird_model <- dig_weird(epv_data)
+    freeball_baseline_model <- freeball_baseline(epv_data)
+    set_poor_model <- set_poor(epv_data)
+    block_touch_stuff_model <- block_touch_stuff(epv_data)
   })
 
   epv_data$epv_in <- NULL
@@ -833,8 +843,6 @@ build_epv_pablo <- function(my.files) {
   rm(a,b)
 
   epv_data$epv_in <- ifelse(is.na(epv_data$epv_in) & epv_data$input_type=="dig_regular" & lag(epv_data$input_type)=="attack_regular", 1 - epv_data$epv_in, epv_data$epv_in)
-
-
 
   a <- subset(epv_data, skq=="Set #" & !is.na(input_coord_x))
   b <- subset(epv_data, skq!="Set #" | is.na(input_coord_x))
@@ -856,6 +864,7 @@ build_epv_pablo <- function(my.files) {
                                                          "dig_error",
                                                          "cover_error",
                                                          "freeball_error"), 0.0, epv_data$epv_out)
+
   suppressWarnings({
     epv_data$epv_in <- ifelse(is.na(epv_data$epv_in) & epv_data$input_type == "serve_baseline", predict(serve_baseline_model, epv_data, type = "response"), epv_data$epv_in)
     epv_data$epv_in <- ifelse(is.na(epv_data$epv_in) & epv_data$input_type == "attack_overpass", predict(attack_overpass_model, epv_data, type = "response"), epv_data$epv_in)
