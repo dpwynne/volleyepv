@@ -67,13 +67,15 @@ colnames(bigten) <- c("team", "wordmark")
 best <- best_player_sum(epv_data, which_skill = "Attack", min_attempts = 100, top_X = 10)
 best <- merge(best, bigten)
 best <- best %>% select(player_name, wordmark, attempts, epv_added_sum)
+best <- best[order(-best$epv_added_sum),]
 
 best %>%
   mutate(epv_added_sum = round(epv_added_sum, 1)) %>%
   gt() %>%
   cols_align(align = "center") %>%
-  cols_label(team = "School",
-             player_name = "Player",
+  cols_label(player_name = "Player",
+             wordmark = "School",
+             attempts = "Attempts",
              epv_added_sum = "Total EPV Added") %>%
   gtExtras::gt_theme_espn() %>%
   gtExtras::gt_hulk_col_numeric(epv_added_sum) %>%
