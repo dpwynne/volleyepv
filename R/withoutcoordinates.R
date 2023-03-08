@@ -431,9 +431,6 @@ build_epv_average <- function(my.files) {
   epv_data$epv_out <- ifelse(epv_data$skill=="Block" & epv_data$output_type=="block_regular" & lag(epv_data$output_type=="attack_regular_block"), 1 - lag(epv_data$epv_out), epv_data$epv_out)
 
   epv_data$epv_in <- ifelse(epv_data$skill == "Reception" & epv_data$input_type == "reception_baseline", 1 - lag(epv_data$epv_in), epv_data$epv_in)
-  epv_data$epv_out <- ifelse(epv_data$skill == "Reception" & epv_data$output_type == "reception_regular", 1 - lag(epv_data$epv_out), epv_data$epv_out)
-
-
 
   sum(is.na(epv_data$epv_in))
   sum(is.na(epv_data$epv_out))
