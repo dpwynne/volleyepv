@@ -34,10 +34,39 @@ library(gtExtras)
 library(magick)
 library(OpenImageR)
 
-best <- best_player_sum(epv_data, which_skill = "Attack", min_attempts = 100, top_X = 15)
+bigten <- data.frame(c("University of Illinois Urbana-Champaign",
+                       "University of Indiana, Bloomington",
+                       "University of Iowa",
+                       "University of Maryland",
+                       "University of Michigan",
+                       "Michigan State University",
+                       "University of Minnesota",
+                       "University of Nebraska-Lincoln",
+                       "Northwestern University",
+                       "Ohio State University",
+                       "Pennsylvania State University",
+                       "Purdue University",
+                       "Rutgers University",
+                       "University of Wisconsin-Madison"),
+                     c("https://raw.githubusercontent.com/volleydork/volleyR/main/ncaa_logos/illinois.png",
+                       "https://raw.githubusercontent.com/volleydork/volleyR/main/ncaa_logos/indiana.png",
+                       "https://raw.githubusercontent.com/volleydork/volleyR/main/ncaa_logos/iowa.png",
+                       "https://raw.githubusercontent.com/volleydork/volleyR/main/ncaa_logos/maryland.png",
+                       "https://raw.githubusercontent.com/volleydork/volleyR/main/ncaa_logos/michigan.png",
+                       "https://raw.githubusercontent.com/volleydork/volleyR/main/ncaa_logos/michiganstate.png",
+                       "https://raw.githubusercontent.com/volleydork/volleyR/main/ncaa_logos/minnesota.png",
+                       "https://raw.githubusercontent.com/volleydork/volleyR/main/ncaa_logos/nebraska.png",
+                       "https://raw.githubusercontent.com/volleydork/volleyR/main/ncaa_logos/northwestern.png",
+                       "https://raw.githubusercontent.com/volleydork/volleyR/main/ncaa_logos/ohiostate.png",
+                       "https://raw.githubusercontent.com/volleydork/volleyR/main/ncaa_logos/pennstate.png",
+                       "https://raw.githubusercontent.com/volleydork/volleyR/main/ncaa_logos/purdue.png",
+                       "https://raw.githubusercontent.com/volleydork/volleyR/main/ncaa_logos/rutgers.png",
+                       "https://raw.githubusercontent.com/volleydork/volleyR/main/ncaa_logos/wisconsin.png"))
+colnames(bigten) <- c("team", "wordmark")
+
+best <- best_player_sum(epv_data, which_skill = "Attack", min_attempts = 100, top_X = 10)
+best <- merge(best, bigten)
 best <- best[,c(2:4)]
-best$wordmark <- "https://raw.githubusercontent.com/volleydork/volleyR/main/ncaa_logos/illinois_fighting_illini_2014-present_w.png"
-best <- best %>% relocate(team, wordmark)
 
 best %>%
   mutate(epv_added_sum = round(epv_added_sum, 1)) %>%
@@ -51,20 +80,6 @@ best %>%
   gtExtras::gt_img_rows(wordmark)
 
 
-#######
-
-load <- "https://raw.githubusercontent.com/volleydork/volleyR/main/ncaa_logos/illinois_fighting_illini_2014-present_w.png" %>%
-  magick::image_read() %>%
-  magick::image_trim()
-
-info <- magick::image_info(load)
-
-rl <- (700 - info$width) / 2
-tb <- (192 - info$height) / 2
-
-image <- magick::image_border(load, "transparent", paste0(rl, "x", tb))
-
-magick::image_write(image, path = "illinois.png", format = "png")
 
 
 
