@@ -66,7 +66,7 @@ colnames(bigten) <- c("team", "wordmark")
 
 best <- best_player_sum(epv_data, which_skill = "Attack", min_attempts = 100, top_X = 10)
 best <- merge(best, bigten)
-best <- best[,c(2:4)]
+best <- best %>% select(player_name, wordmark, attempts, epv_added_sum)
 
 best %>%
   mutate(epv_added_sum = round(epv_added_sum, 1)) %>%
