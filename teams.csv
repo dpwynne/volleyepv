@@ -1,57 +1,72 @@
-team,conference
-Pepperdine University (Men's),MPSF
-Stanford University (Men's),MPSF
-Concordia University Irvine (Men's),MPSF
-"University of California, Irvine (Men's)",Big West
-Grand Canyon University (Men's),MPSF
-"California State University, Northridge (Men's)",Big West
-"University of California, San Diego (Men's)",Big West
-"University of California, Santa Barbara (Men's)",Big West
-"University of California, Los Angeles (Men's)",MPSF
-Brigham Young University (Men's),MPSF
-University of Southern California (Men's),MPSF
-University of Hawaii (Men's),Big West
-"California State University, Long Beach (Men's)",Big West
-Ball State University (Men's),MIVA
-Pennsylvania State University (Men's),EIVA
-Princeton University (Men's),EIVA
-Loyola University Chicago (Men's),MIVA
-Lewis University (Men's),MIVA
-Lindenwood University (Men's),MIVA
-Menlo College (Men's),
-George Mason University (Men's),EIVA
-New Jersey Institute of Technology (Men's),EIVA
-Ohio State University (Men's),MIVA
-Saint Francis University (Men's),
-Harvard University (Men's),EIVA
-McKendree University (Men's),MIVA
-Lincoln Memorial University (Men's),
-Fairleigh Dickinson University (Men's),
-The Master's University (Men's),
-Long Island University (Men's),
-Saint Francis College Brooklyn (Men's),
-Vanguard University (Men's),
-Emmanuel College (GA) (Men's),
-University of Charleston (WV) (Men's),
-Lees-McRae College (Men's),
-University of British Columbia (Men's),
-Queens University of Charlotte (Men's),
-Erskine College (Men's),
-Ottawa University of Arizona (Men's),
-Merrimack College (Mens),
-Westcliff University (Men's),
-Benedictine University at Mesa (Men's),
-King University (Men's),
-Purdue University Fort Wayne (Men's),
-Sacred Heart University (Men's),
-Barton College (Men's),
-D'Youville University (Men's),
-Quincy University (Men's),
-Keyano College,
-Daemen College (Men's),
-"University of California, Santa Cruz (Men's)",
-Belmont Abbey College (Men's),
-North Greenville University (Men's),
-Arizona Christian University (Men's),
-California Lutheran University (Men's),
-Benedictine University (Illinois) (Men's),
+"","team","count","conference"
+"1","Alderson Broaddus University (Men's)",329,"blank"
+"2","Arizona Christian University (Men's)",342,"blank"
+"3","Ball State University (Men's)",8534,"blank"
+"4","Barton College (Men's)",473,"blank"
+"5","Belmont Abbey College (Men's)",707,"blank"
+"6","Benedictine University (Illinois) (Men's)",339,"blank"
+"7","Benedictine University at Mesa (Men's)",629,"blank"
+"8","Brigham Young University (Men's)",7048,"blank"
+"9","California Lutheran University (Men's)",341,"blank"
+"10","California State University, Long Beach (Men's)",4915,"blank"
+"11","California State University, Northridge (Men's)",7380,"blank"
+"12","Carthage College (Men's)",375,"blank"
+"13","Central State University (Men's)",1146,"blank"
+"14","Concordia University Irvine (Men's)",8161,"blank"
+"15","Cornerstone University (mens)",520,"blank"
+"16","D'Youville University (Men's)",1111,"blank"
+"17","Daemen College (Men's)",1676,"blank"
+"18","Emmanuel College (GA) (Men's)",934,"blank"
+"19","Erskine College (Men's)",1033,"blank"
+"20","Fairleigh Dickinson University (Men's)",1783,"blank"
+"21","George Mason University (Men's)",6090,"blank"
+"22","Grand Canyon University (Men's)",7513,"blank"
+"23","Grand View University (Men's)",345,"blank"
+"24","Harvard University (Men's)",5866,"blank"
+"25","Keyano College",386,"blank"
+"26","King University (Men's)",2852,"blank"
+"27","Lees-McRae College (Men's)",759,"blank"
+"28","Lewis University (Men's)",8626,"blank"
+"29","Limestone University (Men's)",529,"blank"
+"30","Lincoln Memorial University (Men's)",2541,"blank"
+"31","Lindenwood University (Men's)",6734,"blank"
+"32","Long Island University (Men's)",3209,"blank"
+"33","Loyola University Chicago (Men's)",7707,"blank"
+"34","Maryville University (Men's)",2118,"blank"
+"35","McKendree University (Men's)",6668,"blank"
+"36","Menlo College (Men's)",2668,"blank"
+"37","Merrimack College (Mens)",1535,"blank"
+"38","Milwaukee School of Engineering (Men's)",426,"blank"
+"39","Missouri S&T Men's Volleyball",2417,"blank"
+"40","New Jersey Institute of Technology (Men's)",5914,"blank"
+"41","North Greenville University (Men's)",724,"blank"
+"42","Ohio State University (Men's)",7318,"blank"
+"43","Ottawa University of Arizona (Men's)",677,"blank"
+"44","Pennsylvania State University (Men's)",6655,"blank"
+"45","Pepperdine University (Men's)",8526,"blank"
+"46","Princeton University (Men's)",6524,"blank"
+"47","Purdue University Fort Wayne (Men's)",7450,"blank"
+"48","Queens University of Charlotte (Men's)",1760,"blank"
+"49","Quincy University (Men's)",6610,"blank"
+"50","Sacred Heart University (Men's)",2315,"blank"
+"51","Saint Ambrose University",280,"blank"
+"52","Saint Francis College Brooklyn (Men's)",2938,"blank"
+"53","Saint Francis University (Men's)",3531,"blank"
+"54","Stanford University (Men's)",8173,"blank"
+"55","The Master's University (Men's)",1739,"blank"
+"56","Thomas More University (Men's)",342,"blank"
+"57","Tusculum University (Men's)",908,"blank"
+"58","University of British Columbia (Men's)",714,"blank"
+"59","University of California, Irvine (Men's)",7541,"blank"
+"60","University of California, Los Angeles (Men's)",7054,"blank"
+"61","University of California, San Diego (Men's)",7226,"blank"
+"62","University of California, Santa Barbara (Men's)",7108,"blank"
+"63","University of California, Santa Cruz (Men's)",359,"blank"
+"64","University of Charleston (WV) (Men's)",5719,"blank"
+"65","University of Hawaii (Men's)",5540,"blank"
+"66","University of Mount Olive (Men's)",745,"blank"
+"67","University of Rio Grande",334,"blank"
+"68","University of Southern California (Men's)",7029,"blank"
+"69","Vanguard University (Men's)",1287,"blank"
+"70","Westcliff University (Men's)",635,"blank"
+"71","Wittenberg University (Men's)",353,"blank"

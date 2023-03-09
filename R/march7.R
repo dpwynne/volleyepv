@@ -206,8 +206,8 @@ a <- aggregate(count ~ team, epv_data, sum)
 a$conference <- "blank"
 write.csv(a, "teams.csv")
 
-conf <- read.csv("teams.csv")
+conf <- read.csv("conference_men.csv")
 epv_data <- merge(epv_data, conf, all.x = TRUE)
 
-mens_test <- subset(epv_data, conference %in% c("MPSF", "Big West"))
+mens_test <- subset(epv_data, conference %in% c("MPSF", "Big West", "EIVA", "MIVA"))
 

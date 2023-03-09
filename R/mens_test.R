@@ -32,8 +32,9 @@ df <- merge(df, epv_ratio, all.x = TRUE)
 df$oos_percent <- (df$oos_count / df$attempts) * 100
 df$oos <- round(df$oos, 3)
 df$oos <- ifelse((df$oos_percent < 15) | (is.na(df$oos_percent)), " - ", df$oos)
+df$epv_added_per10 <- 10*df$epv_added_avg
 
-bigten <- data.frame(c("University of California, Irvine (Men's)",
+schools <- data.frame(c("University of California, Irvine (Men's)",
                        "California State University, Northridge (Men's)",
                        "University of California, San Diego (Men's)",
                        "University of California, Santa Barbara (Men's)",
@@ -59,10 +60,10 @@ bigten <- data.frame(c("University of California, Irvine (Men's)",
                        "https://raw.githubusercontent.com/volleydork/volleyR/main/ncaa_logos/ucla.png",
                        "https://raw.githubusercontent.com/volleydork/volleyR/main/ncaa_logos/byu.png",
                        "https://raw.githubusercontent.com/volleydork/volleyR/main/ncaa_logos/usc.png"))
-colnames(bigten) <- c("team", "wordmark")
+colnames(schools) <- c("team", "wordmark")
 
-chart <- merge(df, bigten)
-chart <- subset(chart, attempts > 100)
+chart <- merge(df, schools, all.x = TRUE)
+chart <- subset(chart, attempts > 50)
 chart$mean <- mean(chart$epv_added_avg)
 chart$sd <- sd(chart$epv_added_avg)
 chart$z_score <- (chart$epv_added_avg - chart$mean) / chart$sd
@@ -76,8 +77,8 @@ chart$sd <- NULL
 chart <- chart %>%
   mutate(epv_added_total = round(epv_added_total, 1),
          insys = round(insys, 3),
-         epv_added_avg = round(epv_added_avg, 3),
-         epv_ratio = round(epv_ratio, 2),
+         epv_added_avg = round(epv_added_avg, 2),
+         epv_added_per10 = round(epv_added_per10, 2),
          z_score = round(z_score, 2),
          better_than = paste0(round(pnorm(z_score)*100, 1), "%"))
 chart <- chart %>% relocate(player_name, wordmark)
@@ -91,14 +92,16 @@ chart %>%
              kills = "Kills",
              insys = "In-Sys Eff",
              oos = "OOS Eff",
-             epv_added_total = "Points Over Expectation",
-             epv_added_avg = "Points per Attack Over Expectation",
-             epv_ratio = "Multiplier vs. Expectation",
+             epv_ratio = "EPV Out / EPV In",
+             epv_added_total = "Total Points Over Expected",
+             epv_added_avg = "Points Over Expected per Attack",
+             epv_added_per10 = "EPA / 10 Attempts",
              z_score = "Z-Score",
-             better_than = "She's Better Than...") %>%
+             better_than = "He's Better Than") %>%
   gtExtras::gt_theme_espn() %>%
-  gtExtras::gt_hulk_col_numeric(z_score) %>%
+  #gtExtras::gt_hulk_col_numeric(z_score) %>%
+  gt_color_rows(z_score, palette = "ggsci::blue_material") %>%
   gtExtras::gt_img_rows(wordmark) %>%
   gt::tab_header(title = "Best Attackers in the MPSF/Big West - 2023")
-#gtsave(save_me, "mpsf-bigwest-2023-v1.png")
+w#gtsave(save_me, "mpsf-bigwest-2023-v1.png")
 
