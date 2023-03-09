@@ -1,4 +1,7 @@
-my.files <- list.files(path = "./fall2022big10", pattern = "*.dvw", full.names = TRUE)
+library(tidyverse)
+library(datavolley)
+
+my.files <- list.files(path = "./mens2023", pattern = "*.dvw", full.names = TRUE)
 
   epv_data <- data.frame(matrix(ncol=0,nrow=0))
 
@@ -147,6 +150,22 @@ my.files <- list.files(path = "./fall2022big10", pattern = "*.dvw", full.names =
   epv_data$kcode <- NA
   epv_data$kcode <- ifelse((epv_data$skill %in% c("Reception", "Dig", "Freeball") & !is.na(lead(epv_data$set_code))) | (epv_data$skill == "Set" & !is.na(epv_data$set_code)), "yes", "no")
 
+
+  #create column to denote if there is a winning or losing contact & fill in other touches within same possession if poss is won/lost
+  winners <- c("Serve #", "Attack #", "Block #")
+  losers <- c("Serve =", "Reception =", "Set =", "Attack =", "Attack /", "Block =", "Dig =", "Freeball =", "Cover =")
+  epv_data$possession_winner <- ifelse(epv_data$skq %in% winners, 1, 0)
+  epv_data$possession_winner <- ifelse(lead(epv_data$skq,1) %in% winners & epv_data$rally_possession==lead(epv_data$rally_possession, 1), 1, epv_data$possession_winner)
+  epv_data$possession_winner <- ifelse(lead(epv_data$skq,2) %in% winners & epv_data$rally_possession==lead(epv_data$rally_possession, 2), 1, epv_data$possession_winner)
+  epv_data$possession_winner <- ifelse(lead(epv_data$skq,3) %in% winners & epv_data$rally_possession==lead(epv_data$rally_possession, 3), 1, epv_data$possession_winner)
+
+  epv_data$possession_loser <- ifelse(epv_data$skq %in% losers, 1, 0)
+  epv_data$possession_loser <- ifelse(lead(epv_data$skq,1) %in% losers & epv_data$rally_possession==lead(epv_data$rally_possession, 1), 1, epv_data$possession_loser)
+  epv_data$possession_loser <- ifelse(lead(epv_data$skq,2) %in% losers & epv_data$rally_possession==lead(epv_data$rally_possession, 2), 1, epv_data$possession_loser)
+  epv_data$possession_loser <- ifelse(lead(epv_data$skq,3) %in% losers & epv_data$rally_possession==lead(epv_data$rally_possession, 3), 1, epv_data$possession_loser)
+
+  #create efficiency w/in possession
+  epv_data$poss_eff <- epv_data$possession_winner-epv_data$possession_loser
 
   #reorder properly...in case I did anything stupid
   epv_data <- epv_data[order(epv_data$id_touch),]
@@ -480,6 +499,7 @@ my.files <- list.files(path = "./fall2022big10", pattern = "*.dvw", full.names =
   sum(is.na(epv_data$epv_out))
   epv_data$epv_in <- ifelse(is.na(epv_data$epv_in), 0.5, epv_data$epv_in)
   epv_data$epv_out <- ifelse(is.na(epv_data$epv_out), 0.5, epv_data$epv_out)
+  epv_data$epv_ratio <- epv_data$epv_out / epv_data$epv_in
 
 
   epv_data$home_epv_in <- ifelse(epv_data$team == epv_data$home_team, epv_data$epv_in, 1 - epv_data$epv_in)
@@ -489,7 +509,7 @@ my.files <- list.files(path = "./fall2022big10", pattern = "*.dvw", full.names =
   epv_data$visiting_epv_out <- ifelse(epv_data$team == epv_data$visiting_team, epv_data$epv_out, 1 - epv_data$epv_out)
   epv_data$visiting_epv_added <- epv_data$visiting_epv_out - epv_data$visiting_epv_in
 
-  epv_data <- epv_data %>% relocate(player_name, skq, input_type, output_type, epv_in, epv_out, epv_added, match_date, team, opponent, skill, two_touch_ago, one_touch_ago, one_touch_future, two_touch_future, input_kcode, output_kcode, blockers)
+  epv_data <- epv_data %>% relocate(player_name, skq, input_type, output_type, epv_in, epv_out, epv_added, epv_ratio, match_date, team, opponent, skill, two_touch_ago, one_touch_ago, one_touch_future, two_touch_future, input_kcode, output_kcode, blockers)
   epv_data <- epv_data[order(epv_data$id_touch),]
   print("Boom! Done.")
 
