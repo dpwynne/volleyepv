@@ -82,7 +82,7 @@ chart <- chart %>%
          better_than = paste0(round(pnorm(z_score)*100, 1), "%"))
 chart <- chart %>% relocate(player_name, wordmark)
 
-save_me <- chart %>%
+chart %>%
   gt() %>%
   cols_align(align = "center") %>%
   cols_label(player_name = "Player",
@@ -99,6 +99,6 @@ save_me <- chart %>%
   gtExtras::gt_theme_espn() %>%
   gtExtras::gt_hulk_col_numeric(z_score) %>%
   gtExtras::gt_img_rows(wordmark) %>%
-  gt::tab_header(title = "Best Attackers in the Big Ten - 2022")
-gtsave(save_me, "bigten-2022-v1.png")
+  gt::tab_header(title = "Best Attackers in the MPSF/Big West - 2023")
+#gtsave(save_me, "mpsf-bigwest-2023-v1.png")
 
