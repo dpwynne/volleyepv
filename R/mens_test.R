@@ -108,6 +108,7 @@ chart <- chart %>%
   mutate(epv_added_total = round(epv_added_total, 1),
          insys = round(insys, 3),
          epv_added_avg = round(epv_added_avg, 2),
+         epv_ratio = round(epv_ratio, 2),
          epv_added_per10 = round(epv_added_per10, 2),
          z_score = round(z_score, 2),
          better_than = paste0(round(pnorm(z_score)*100, 1), "%"))
@@ -123,9 +124,9 @@ chart %>%
              insys = "In-Sys Eff",
              oos = "OOS Eff",
              epv_ratio = "EPV Out / EPV In",
-             epv_added_total = "Total Points Over Expected",
-             epv_added_avg = "Points Over Expected per Attack",
-             epv_added_per10 = "EPA / 10 Attempts",
+             epv_added_total = "Total EPA",
+             epv_added_avg = "EPA per Attack",
+             epv_added_per10 = "EPA per 10 Attacks",
              z_score = "Z-Score",
              better_than = "He's Better Than") %>%
   gtExtras::gt_theme_espn() %>%
@@ -133,5 +134,4 @@ chart %>%
   gt_color_rows(z_score, palette = "ggsci::blue_material") %>%
   gtExtras::gt_img_rows(wordmark) %>%
   gt::tab_header(title = "Best Attackers in Men's Volleyball - 2023")
-w#gtsave(save_me, "mpsf-bigwest-2023-v1.png")
-
+#gtsave(save_me, "mpsf-bigwest-2023-v1.png")
