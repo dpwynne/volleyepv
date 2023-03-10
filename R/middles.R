@@ -119,7 +119,7 @@ colnames(conferences) <- c("conference", "conference_logo")
 
 chart <- merge(df, schools, all.x = TRUE)
 chart <- merge(chart, conferences, all.x = TRUE)
-chart <- subset(chart, attempts > 50)
+chart <- subset(chart, attempts > 74)
 chart$mean <- mean(chart$epv_added_avg)
 chart$sd <- sd(chart$epv_added_avg)
 chart$z_score <- (chart$epv_added_avg - chart$mean) / chart$sd
@@ -128,21 +128,23 @@ chart$oos_percent <- NULL
 chart$oos_count <- NULL
 chart$team <- NULL
 chart$mean <- NULL
+chart$epv_added_avg_insys <- NULL
 chart$sd <- NULL
+chart$oos <- NULL
+chart$epv_added_avg_oos <- NULL
 chart$conference <- NULL
 chart$epv_ratio <- NULL
 chart <- chart %>%
   mutate(epv_added_total = round(epv_added_total, 1),
          insys = round(insys, 3),
          epv_added_avg = round(epv_added_avg, 3),
-         epv_added_avg_insys = round(epv_added_avg_insys, 3),
          percentile = round(pnorm(z_score)*100, 1))
 
 chart <- chart %>% relocate(player_name, position, wordmark, conference_logo)
 chart$z_score <- NULL
 
 chart <- chart %>%
-  gt(groupname_col = "position") %>%
+  gt() %>%
   cols_align(align = "center") %>%
   cols_label(player_name = "Player",
              position = "Position",
@@ -151,18 +153,15 @@ chart <- chart %>%
              attempts = "Attempts",
              kills = "Kills",
              insys = "In-Sys Eff",
-             oos = "OOS Eff",
              epv_added_total = "Total EPA",
              epv_added_avg = "EPA per Attack",
-             epv_added_avg_insys = "In-Sys EPA",
-             epv_added_avg_oos = "OOS EPA",
              percentile = "He's Better Than...") %>%
   gtExtras::gt_theme_espn() %>%
   gt_color_rows(percentile, palette = "ggsci::blue_material") %>%
   gtExtras::gt_img_rows(wordmark) %>%
   gtExtras::gt_img_rows(conference_logo) %>%
-  gt::tab_header(title = "Best Attackers by Position in Men's Volleyball (2023)",
-                 subtitle = "EPA = Expected Points Added | Attempts > 100") %>%
+  gt::tab_header(title = "Best Middle Blockers in Men's Volleyball (2023)",
+                 subtitle = "EPA = Expected Points Added | Attempts >= 75") %>%
   gt::tab_source_note("volleydork.blog")
 
 
