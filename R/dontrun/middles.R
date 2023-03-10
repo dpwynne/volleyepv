@@ -119,7 +119,7 @@ colnames(conferences) <- c("conference", "conference_logo")
 
 chart <- merge(df, schools, all.x = TRUE)
 chart <- merge(chart, conferences, all.x = TRUE)
-chart <- subset(chart, attempts > 74)
+chart <- subset(chart, attempts > 100)
 chart$mean <- mean(chart$epv_added_avg)
 chart$sd <- sd(chart$epv_added_avg)
 chart$z_score <- (chart$epv_added_avg - chart$mean) / chart$sd
@@ -161,7 +161,7 @@ chart <- chart %>%
   gtExtras::gt_img_rows(wordmark) %>%
   gtExtras::gt_img_rows(conference_logo) %>%
   gt::tab_header(title = "Best Middle Blockers in Men's Volleyball (2023)",
-                 subtitle = "EPA = Expected Points Added | Attempts >= 75") %>%
+                 subtitle = "EPA = Expected Points Added | Attempts > 100") %>%
   gt::tab_source_note("volleydork.blog")
 
 chart$`_data`$percentile <- paste0(chart$`_data`$percentile, "%")

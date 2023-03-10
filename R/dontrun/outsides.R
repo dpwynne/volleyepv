@@ -117,7 +117,7 @@ colnames(conferences) <- c("conference", "conference_logo")
 
 chart <- merge(df, schools, all.x = TRUE)
 chart <- merge(chart, conferences, all.x = TRUE)
-chart <- subset(chart, attempts > 99)
+chart <- subset(chart, attempts > 200)
 chart$mean <- mean(chart$epv_added_avg)
 chart$sd <- sd(chart$epv_added_avg)
 chart$z_score <- (chart$epv_added_avg - chart$mean) / chart$sd
@@ -128,7 +128,6 @@ chart$position <- NULL
 chart$team <- NULL
 chart$mean <- NULL
 chart$sd <- NULL
-chart$oos <- NULL
 chart$conference <- NULL
 chart$epv_ratio <- NULL
 chart <- chart %>%
@@ -151,6 +150,7 @@ chart <- chart %>%
              attempts = "Attempts",
              kills = "Kills",
              insys = "In-Sys Eff",
+             oos = "OOS Eff",
              epv_added_total = "Total EPA",
              epv_added_avg = "EPA per Attack",
              epv_added_avg_insys = "In-Sys EPA",
@@ -161,7 +161,7 @@ chart <- chart %>%
   gtExtras::gt_img_rows(wordmark) %>%
   gtExtras::gt_img_rows(conference_logo) %>%
   gt::tab_header(title = "Best Outside Hitters in Men's Volleyball (2023)",
-                 subtitle = "EPA = Expected Points Added | Attempts > 100") %>%
+                 subtitle = "EPA = Expected Points Added | Attempts > 200") %>%
   gt::tab_source_note("volleydork.blog")
 
 

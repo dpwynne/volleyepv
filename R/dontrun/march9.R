@@ -29,7 +29,7 @@ total$p4 <- total$Outside/total$count
 
 total$position <- NA
 total$position <- ifelse(total$sets / total$totaltouches > 0.5, "Setter", total$position)
-total$position <- ifelse(is.na(total$position) & total$rec_dig / total$totaltouches > 0.5, "L/DS", total$position)
+total$position <- ifelse(is.na(total$position) & total$rec_dig / total$totaltouches > 0.6, "L/DS", total$position)
 total$position <- ifelse(is.na(total$position) & total$p2 > total$p3 & total$p2 > total$p4, "Opposite", total$position)
 total$position <- ifelse(is.na(total$position) & total$p3 > total$p2 & total$p3 > total$p4, "Middle", total$position)
 total$position <- ifelse(is.na(total$position) & total$p4 > total$p3 & total$p4 > total$p2, "Outside", total$position)
