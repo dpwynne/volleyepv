@@ -510,15 +510,3 @@ build_epv_average <- function(my.files) {
   epv_data <- epv_data[order(epv_data$id_touch),]
   print("Boom! Done.")
 }
-
-best_player_epv_avg <- function(epv, which_skill, min_attempts, top_X) {
-  a <- aggregate(epv_added ~ skill*team*player_name, subset(epv, skill==which_skill), mean)
-  colnames(a) <- c("skill","team", "player_name", "epv_added_sum")
-  b <- aggregate(count ~ skill*team*player_name, subset(epv, skill==which_skill), sum)
-  colnames(b) <- c("skill","team", "player_name", "attempts")
-  c <- merge(a,b)
-  c <- subset(c, attempts > min_attempts)
-  c <- c[order(-c$epv_added),]
-  best_player <- c[1:top_X,1:5]
-  return(best_player)
-}
