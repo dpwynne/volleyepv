@@ -508,5 +508,6 @@ build_epv_average <- function(my.files) {
 
   epv_data <- epv_data %>% relocate(player_name, skq, input_type, output_type, epv_in, epv_out, epv_added, epv_ratio, match_date, team, opponent, skill, two_touch_ago, one_touch_ago, one_touch_future, two_touch_future, input_kcode, output_kcode, blockers)
   epv_data <- epv_data[order(epv_data$id_touch),]
+  return(epv_data)
   print("Boom! Done.")
 }
