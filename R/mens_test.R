@@ -163,4 +163,4 @@ chart$`_data`$percentile <- paste0(chart$`_data`$percentile, "%")
 chart
 save_me <- chart
 
-gtsave(save_me, "20230309-men-attack.png")
+gtsave(save_me, "charts/20230309-men-attack.png")
