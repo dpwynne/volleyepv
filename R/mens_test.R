@@ -91,7 +91,7 @@ schools <- data.frame(c("Lewis University (Men's)",
                        "https://raw.githubusercontent.com/volleydork/volleyR/main/ncaa_logos/lbsu.png",
                        "https://raw.githubusercontent.com/volleydork/volleyR/main/ncaa_logos/sfu.png"))
 
-conferences <- data.frame(c("Big West", "MPSF", "MIVA", "EIVA"
+conferences <- data.frame(c("Big West", "MPSF", "EIVA", "MIVA"
                         ),
                       c("https://raw.githubusercontent.com/volleydork/volleyR/main/ncaa_logos/conference_bigwest.png",
                         "https://raw.githubusercontent.com/volleydork/volleyR/main/ncaa_logos/conference_mpsf.png",
@@ -110,13 +110,14 @@ chart$mean <- mean(chart$epv_added_avg)
 chart$sd <- sd(chart$epv_added_avg)
 chart$z_score <- (chart$epv_added_avg - chart$mean) / chart$sd
 chart <- chart[order(-chart$z_score),]
-chart <- chart[1:20,]
+chart <- chart[1:25,]
 chart$oos_percent <- NULL
 chart$oos_count <- NULL
 chart$team <- NULL
 chart$mean <- NULL
 chart$sd <- NULL
 chart$epv_added_avg <- NULL
+chart$conference <- NULL
 chart$epv_ratio <- NULL
 chart <- chart %>%
   mutate(epv_added_total = round(epv_added_total, 1),
@@ -131,6 +132,7 @@ chart <- chart %>%
   cols_align(align = "center") %>%
   cols_label(player_name = "Player",
              wordmark = "School",
+             conference_logo = "Conference",
              attempts = "Attempts",
              kills = "Kills",
              insys = "In-Sys Eff",
@@ -149,5 +151,6 @@ chart <- chart %>%
 
 chart$`_data`$percentile <- paste0(chart$`_data`$percentile, "%")
 chart
+save_me <- chart
 
-#gtsave(save_me, "20230309-men-attack.png")
+gtsave(save_me, "20230309-men-attack.png")
