@@ -86,7 +86,7 @@ schools <- data.frame(c("Lewis University (Men's)",
                        "https://raw.githubusercontent.com/volleydork/volleyR/main/ncaa_logos/georgemason.png",
                        "https://raw.githubusercontent.com/volleydork/volleyR/main/ncaa_logos/njit.png",
                        "https://raw.githubusercontent.com/volleydork/volleyR/main/ncaa_logos/harvard.png",
-                       "https://raw.githubusercontent.com/volleydork/volleyR/main/ncaa_logos/charleston.png",
+                       "https://raw.githubusercontent.com/volleydork/volleyR/main/ncaa_logos/ucwv.png",
                        "https://raw.githubusercontent.com/volleydork/volleyR/main/ncaa_logos/hawaii.png",
                        "https://raw.githubusercontent.com/volleydork/volleyR/main/ncaa_logos/lbsu.png",
                        "https://raw.githubusercontent.com/volleydork/volleyR/main/ncaa_logos/sfu.png"))
