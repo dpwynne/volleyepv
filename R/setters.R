@@ -7,46 +7,42 @@ library(magick)
 library(OpenImageR)
 library(webshot2)
 
-#opposites$player_name <- ifelse(opposites$player_name == "SIMON TORWIE", "Simon Torwie", opposites$player_name)
-opposites <- subset(mens_test, position == "Opposite")
+setters <- subset(mens_test, position == "Setter")
 
-attempts <- aggregate(count ~ player_name*position*team*conference, subset(opposites, skill == "Attack"), sum)
+setters$player_name <- ifelse(str_sub(setters$player_name, start = -9) == "Constable", "Donovan Constable", setters$player_name)
+setters$player_name <- ifelse(setters$player_name == "GABRIEL Dyer", "Gabriel Dyer", setters$player_name)
+
+
+
+attempts <- aggregate(count ~ player_name*position*team*conference, subset(setters, skill == "Set"), sum)
 colnames(attempts) <- c("player_name", "position", "team", "conference", "attempts")
 
-kills <- aggregate(count ~ player_name*position*team*conference, subset(opposites, skq == "Attack #"), sum)
-colnames(kills) <- c("player_name", "position", "team", "conference", "kills")
+poor_fault <- aggregate(count ~ player_name*position*team*conference, subset(setters, skq == "Set -" | skq == "Set ="), sum)
+colnames(poor_fault) <- c("player_name", "position", "team", "conference", "poor_fault")
 
-insys <- aggregate(poss_eff ~ player_name*position*team*conference, subset(opposites, skill == "Attack" & substr(attack_code, 1, 1) %in% c("C", "P", "X")), mean)
-colnames(insys) <- c("player_name", "position", "team", "conference", "insys")
+team_eff_insys <- aggregate(poss_eff ~ player_name*position*team*conference, subset(setters, skill == "Set" & kcode == "yes"), mean)
+colnames(team_eff_insys) <- c("player_name", "position", "team", "conference", "team_eff_insys")
 
-oos <- aggregate(poss_eff ~ player_name*position*team*conference, subset(opposites, skill == "Attack" & substr(attack_code, 1, 1) == "V"), mean)
-colnames(oos) <- c("player_name", "position", "team", "conference", "oos")
-
-oos_count <- aggregate(count ~ player_name*position*team*conference, subset(opposites, skill == "Attack" & substr(attack_code, 1, 1) == "V"), sum)
-colnames(oos_count) <- c("player_name", "position", "team", "conference", "oos_count")
-
-epv_added_total <- aggregate(epv_added ~ player_name*position*team*conference, subset(opposites, skill == "Attack"), sum)
+epv_added_total <- aggregate(epv_added ~ player_name*position*team*conference, subset(setters, skill == "Set"), sum)
 colnames(epv_added_total) <- c("player_name", "position", "team", "conference", "epv_added_total")
 
-epv_added_avg <- aggregate(epv_added ~ player_name*position*team*conference, subset(opposites, skill == "Attack"), mean)
+epv_added_avg <- aggregate(epv_added ~ player_name*position*team*conference, subset(setters, skill == "Set"), mean)
 colnames(epv_added_avg) <- c("player_name", "position", "team", "conference", "epv_added_avg")
 
-epv_added_avg_insys <- aggregate(epv_added ~ player_name*position*team*conference, subset(opposites, skill == "Attack" & substr(attack_code, 1, 1) %in% c("C", "P", "X")), mean)
+epv_added_avg_insys <- aggregate(epv_added ~ player_name*position*team*conference, subset(setters, skill == "Set" & kcode == "yes"), mean)
 colnames(epv_added_avg_insys) <- c("player_name", "position", "team", "conference", "epv_added_avg_insys")
 
-epv_added_avg_oos <- aggregate(epv_added ~ player_name*position*team*conference, subset(opposites, skill == "Attack" & substr(attack_code, 1, 1) == "V"), mean)
+epv_added_avg_oos <- aggregate(epv_added ~ player_name*position*team*conference, subset(setters, skill == "Set" & kcode == "no"), mean)
 colnames(epv_added_avg_oos) <- c("player_name", "position", "team", "conference", "epv_added_avg_oos")
 
-df <- merge(attempts, kills)
-df <- merge(df, insys, all.x = TRUE)
-df <- merge(df, oos, all.x = TRUE)
-df <- merge(df, oos_count, all.x = TRUE)
+df <- merge(attempts, poor_fault)
+df <- merge(df, team_eff_insys, all.x = TRUE)
 df <- merge(df, epv_added_total, all.x = TRUE)
 df <- merge(df, epv_added_avg, all.x = TRUE)
 df <- merge(df, epv_added_avg_insys, all.x = TRUE)
 df <- merge(df, epv_added_avg_oos, all.x = TRUE)
-df$oos_percent <- (df$oos_count / df$attempts) * 100
-df$oos <- round(df$oos, 3)
+df$poor_fault_percent <- (df$poor_fault / df$attempts) * 100
+df[is.na(df)] <- 0
 
 schools <- data.frame(c("Lewis University (Men's)",
                         "Ball State University (Men's)",
@@ -117,7 +113,7 @@ colnames(conferences) <- c("conference", "conference_logo")
 
 chart <- merge(df, schools, all.x = TRUE)
 chart <- merge(chart, conferences, all.x = TRUE)
-chart <- subset(chart, attempts > 99)
+chart <- subset(chart, attempts > 300)
 chart$mean <- mean(chart$epv_added_avg)
 chart$sd <- sd(chart$epv_added_avg)
 chart$z_score <- (chart$epv_added_avg - chart$mean) / chart$sd
@@ -128,18 +124,18 @@ chart$position <- NULL
 chart$team <- NULL
 chart$mean <- NULL
 chart$sd <- NULL
-chart$oos <- NULL
+chart$poor_fault <- NULL
 chart$conference <- NULL
-chart$epv_ratio <- NULL
 chart <- chart %>%
   mutate(epv_added_total = round(epv_added_total, 1),
-         insys = round(insys, 3),
+         team_eff_insys = round(team_eff_insys, 3),
+         poor_fault_percent = paste0(round(poor_fault_percent, 1), "%"),
          epv_added_avg = round(epv_added_avg, 3),
          epv_added_avg_insys = round(epv_added_avg_insys, 3),
          epv_added_avg_oos = round(epv_added_avg_oos, 3),
          percentile = round(pnorm(z_score)*100, 1))
 
-chart <- chart %>% relocate(player_name, wordmark, conference_logo)
+chart <- chart %>% relocate(player_name, wordmark, conference_logo, attempts, poor_fault_percent)
 chart$z_score <- NULL
 
 chart <- chart %>%
@@ -149,10 +145,10 @@ chart <- chart %>%
              wordmark = "School",
              conference_logo = "Conference",
              attempts = "Attempts",
-             kills = "Kills",
-             insys = "In-Sys Eff",
+             poor_fault_percent = "Poor / Fault",
+             team_eff_insys = "Team In-Sys Eff",
              epv_added_total = "Total EPA",
-             epv_added_avg = "EPA per Attack",
+             epv_added_avg = "EPA per Attempt",
              epv_added_avg_insys = "In-Sys EPA",
              epv_added_avg_oos = "OOS EPA",
              percentile = "He's Better Than...") %>%
@@ -160,8 +156,8 @@ chart <- chart %>%
   gt_color_rows(percentile, palette = "ggsci::blue_material") %>%
   gtExtras::gt_img_rows(wordmark) %>%
   gtExtras::gt_img_rows(conference_logo) %>%
-  gt::tab_header(title = "Best Opposites in Men's Volleyball (2023)",
-                 subtitle = "EPA = Expected Points Added | Attempts > 100") %>%
+  gt::tab_header(title = "Best Setters in Men's Volleyball (2023)",
+                 subtitle = "EPA = Expected Points Added | Attempts > 300") %>%
   gt::tab_source_note("volleydork.blog")
 
 
@@ -169,4 +165,4 @@ chart$`_data`$percentile <- paste0(chart$`_data`$percentile, "%")
 chart
 save_me <- chart
 
-gtsave(save_me, "charts/20230310-men-opposites.png")
+gtsave(save_me, "charts/20230310-men-setters.png")

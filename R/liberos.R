@@ -7,46 +7,47 @@ library(magick)
 library(OpenImageR)
 library(webshot2)
 
-#opposites$player_name <- ifelse(opposites$player_name == "SIMON TORWIE", "Simon Torwie", opposites$player_name)
-opposites <- subset(mens_test, position == "Opposite")
+liberos <- subset(mens_test, position == "L/DS")
 
-attempts <- aggregate(count ~ player_name*position*team*conference, subset(opposites, skill == "Attack"), sum)
+#liberos$player_name <- ifelse(str_sub(liberos$player_name, start = -9) == "Constable", "Donovan Constable", liberos$player_name)
+#liberos$player_name <- ifelse(liberos$player_name == "GABRIEL Dyer", "Gabriel Dyer", liberos$player_name)
+attempts <- aggregate(count ~ player_name*position*team*conference, subset(liberos, skill == "Reception" | skill == "Dig"), sum)
 colnames(attempts) <- c("player_name", "position", "team", "conference", "attempts")
 
-kills <- aggregate(count ~ player_name*position*team*conference, subset(opposites, skq == "Attack #"), sum)
-colnames(kills) <- c("player_name", "position", "team", "conference", "kills")
+rec <- aggregate(count ~ player_name*position*team*conference, subset(liberos, skill == "Reception"), sum)
+colnames(rec) <- c("player_name", "position", "team", "conference", "rec")
 
-insys <- aggregate(poss_eff ~ player_name*position*team*conference, subset(opposites, skill == "Attack" & substr(attack_code, 1, 1) %in% c("C", "P", "X")), mean)
-colnames(insys) <- c("player_name", "position", "team", "conference", "insys")
+dig <- aggregate(count ~ player_name*position*team*conference, subset(liberos, skill == "Dig"), sum)
+colnames(dig) <- c("player_name", "position", "team", "conference", "dig")
 
-oos <- aggregate(poss_eff ~ player_name*position*team*conference, subset(opposites, skill == "Attack" & substr(attack_code, 1, 1) == "V"), mean)
-colnames(oos) <- c("player_name", "position", "team", "conference", "oos")
+rec_fault <- aggregate(count ~ player_name*position*team*conference, subset(liberos, skq == "Reception ="), sum)
+colnames(rec_fault) <- c("player_name", "position", "team", "conference", "rec_fault")
 
-oos_count <- aggregate(count ~ player_name*position*team*conference, subset(opposites, skill == "Attack" & substr(attack_code, 1, 1) == "V"), sum)
-colnames(oos_count) <- c("player_name", "position", "team", "conference", "oos_count")
+xso <- aggregate(epv_out ~ player_name*position*team*conference, subset(liberos, skill == "Reception"), mean)
+colnames(xso) <- c("player_name", "position", "team", "conference", "xso")
 
-epv_added_total <- aggregate(epv_added ~ player_name*position*team*conference, subset(opposites, skill == "Attack"), sum)
-colnames(epv_added_total) <- c("player_name", "position", "team", "conference", "epv_added_total")
+epv_added_avg_rec <- aggregate(epv_added ~ player_name*position*team*conference, subset(liberos, skill == "Reception"), mean)
+colnames(epv_added_avg_rec) <- c("player_name", "position", "team", "conference", "epv_added_avg_rec")
 
-epv_added_avg <- aggregate(epv_added ~ player_name*position*team*conference, subset(opposites, skill == "Attack"), mean)
-colnames(epv_added_avg) <- c("player_name", "position", "team", "conference", "epv_added_avg")
+epv_added_avg_dig <- aggregate(epv_added ~ player_name*position*team*conference, subset(liberos, skill == "Dig"), mean)
+colnames(epv_added_avg_dig) <- c("player_name", "position", "team", "conference", "epv_added_avg_dig")
 
-epv_added_avg_insys <- aggregate(epv_added ~ player_name*position*team*conference, subset(opposites, skill == "Attack" & substr(attack_code, 1, 1) %in% c("C", "P", "X")), mean)
-colnames(epv_added_avg_insys) <- c("player_name", "position", "team", "conference", "epv_added_avg_insys")
+xtrans <- aggregate(epv_out ~ player_name*position*team*conference, subset(liberos, skill == "Dig"), mean)
+colnames(xtrans) <- c("player_name", "position", "team", "conference", "xtrans")
 
-epv_added_avg_oos <- aggregate(epv_added ~ player_name*position*team*conference, subset(opposites, skill == "Attack" & substr(attack_code, 1, 1) == "V"), mean)
-colnames(epv_added_avg_oos) <- c("player_name", "position", "team", "conference", "epv_added_avg_oos")
+epv_added_avg_recdig <- aggregate(epv_added ~ player_name*position*team*conference, subset(liberos, skill == "Dig" | skill == "Reception"), mean)
+colnames(epv_added_avg_recdig) <- c("player_name", "position", "team", "conference", "epv_added_avg_recdig")
 
-df <- merge(attempts, kills)
-df <- merge(df, insys, all.x = TRUE)
-df <- merge(df, oos, all.x = TRUE)
-df <- merge(df, oos_count, all.x = TRUE)
-df <- merge(df, epv_added_total, all.x = TRUE)
-df <- merge(df, epv_added_avg, all.x = TRUE)
-df <- merge(df, epv_added_avg_insys, all.x = TRUE)
-df <- merge(df, epv_added_avg_oos, all.x = TRUE)
-df$oos_percent <- (df$oos_count / df$attempts) * 100
-df$oos <- round(df$oos, 3)
+df <- merge(attempts, rec, all.x = TRUE)
+df <- merge(df, dig, all.x = TRUE)
+df <- merge(df, rec_fault, all.x = TRUE)
+df <- merge(df, xso, all.x = TRUE)
+df <- merge(df, epv_added_avg_rec, all.x = TRUE)
+df <- merge(df, epv_added_avg_dig, all.x = TRUE)
+df <- merge(df, xtrans, all.x = TRUE)
+df <- merge(df, epv_added_avg_recdig, all.x = TRUE)
+df$recfault_percent <- (df$rec_fault / df$rec) * 100
+df[is.na(df)] <- 0
 
 schools <- data.frame(c("Lewis University (Men's)",
                         "Ball State University (Men's)",
@@ -117,29 +118,31 @@ colnames(conferences) <- c("conference", "conference_logo")
 
 chart <- merge(df, schools, all.x = TRUE)
 chart <- merge(chart, conferences, all.x = TRUE)
-chart <- subset(chart, attempts > 99)
-chart$mean <- mean(chart$epv_added_avg)
-chart$sd <- sd(chart$epv_added_avg)
-chart$z_score <- (chart$epv_added_avg - chart$mean) / chart$sd
+chart <- subset(chart, attempts > 100)
+chart$mean <- mean(chart$epv_added_avg_recdig)
+chart$sd <- sd(chart$epv_added_avg_recdig)
+chart$z_score <- (chart$epv_added_avg_recdig - chart$mean) / chart$sd
 chart <- chart %>% arrange(desc(z_score)) %>% group_by(position) %>% slice(1:15) %>% ungroup(position)
 chart$oos_percent <- NULL
 chart$oos_count <- NULL
 chart$position <- NULL
 chart$team <- NULL
 chart$mean <- NULL
+chart$attempts <- NULL
+chart$rec_fault <- NULL
 chart$sd <- NULL
-chart$oos <- NULL
+chart$poor_fault <- NULL
 chart$conference <- NULL
-chart$epv_ratio <- NULL
 chart <- chart %>%
-  mutate(epv_added_total = round(epv_added_total, 1),
-         insys = round(insys, 3),
-         epv_added_avg = round(epv_added_avg, 3),
-         epv_added_avg_insys = round(epv_added_avg_insys, 3),
-         epv_added_avg_oos = round(epv_added_avg_oos, 3),
+  mutate(recfault_percent = paste0(round(recfault_percent, 1), "%"),
+         xso = paste0(100*round(xso, 3), "%"),
+         xtrans = paste0(100*round(xtrans, 3), "%"),
+         epv_added_avg_rec = round(epv_added_avg_rec, 3),
+         epv_added_avg_dig = round(epv_added_avg_dig, 3),
+         epv_added_avg_recdig = round(epv_added_avg_recdig, 3),
          percentile = round(pnorm(z_score)*100, 1))
 
-chart <- chart %>% relocate(player_name, wordmark, conference_logo)
+chart <- chart %>% relocate(player_name, wordmark, conference_logo, rec, xso, recfault_percent, epv_added_avg_rec, dig, xtrans, epv_added_avg_dig, epv_added_avg_recdig, percentile)
 chart$z_score <- NULL
 
 chart <- chart %>%
@@ -148,20 +151,21 @@ chart <- chart %>%
   cols_label(player_name = "Player",
              wordmark = "School",
              conference_logo = "Conference",
-             attempts = "Attempts",
-             kills = "Kills",
-             insys = "In-Sys Eff",
-             epv_added_total = "Total EPA",
-             epv_added_avg = "EPA per Attack",
-             epv_added_avg_insys = "In-Sys EPA",
-             epv_added_avg_oos = "OOS EPA",
+             rec = "Receptions",
+             recfault_percent = "Reception Error",
+             xso = "Expected Sideout",
+             dig = "Dig Touches",
+             epv_added_avg_rec = "Reception EPA",
+             xtrans = "Expected Trans",
+             epv_added_avg_dig = "Dig EPA",
+             epv_added_avg_recdig = "Rec & Dig EPA",
              percentile = "He's Better Than...") %>%
   gtExtras::gt_theme_espn() %>%
   gt_color_rows(percentile, palette = "ggsci::blue_material") %>%
   gtExtras::gt_img_rows(wordmark) %>%
   gtExtras::gt_img_rows(conference_logo) %>%
-  gt::tab_header(title = "Best Opposites in Men's Volleyball (2023)",
-                 subtitle = "EPA = Expected Points Added | Attempts > 100") %>%
+  gt::tab_header(title = "Best Liberos in Men's Volleyball (2023)",
+                 subtitle = "EPA = Expected Points Added | Attempts > 100 | Rec/Dig counts include errors") %>%
   gt::tab_source_note("volleydork.blog")
 
 
@@ -169,4 +173,4 @@ chart$`_data`$percentile <- paste0(chart$`_data`$percentile, "%")
 chart
 save_me <- chart
 
-gtsave(save_me, "charts/20230310-men-opposites.png")
+gtsave(save_me, "charts/20230310-men-liberos.png")
