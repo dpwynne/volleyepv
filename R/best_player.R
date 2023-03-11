@@ -8,6 +8,7 @@ best_player_epv_avg <- function(epv, which_skill, min_attempts, top_X) {
   c <- subset(c, attempts > min_attempts)
   c <- c[order(-c$epv_added),]
   best_player <- c[1:top_X,1:5]
+  best_player$epv_added_avg <- round(best_player$epv_added_avg, 3)
   best_player <- best_player %>% relocate(player_name, team, skill, attempts, epv_added_avg)
   return(best_player)
 }

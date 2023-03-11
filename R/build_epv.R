@@ -496,7 +496,6 @@ build_epv_average <- function(my.files) {
   sum(is.na(epv_data$epv_out))
   epv_data$epv_in <- ifelse(is.na(epv_data$epv_in), 0.5, epv_data$epv_in)
   epv_data$epv_out <- ifelse(is.na(epv_data$epv_out), 0.5, epv_data$epv_out)
-  epv_data$epv_ratio <- epv_data$epv_out / epv_data$epv_in
 
 
   epv_data$home_epv_in <- ifelse(epv_data$team == epv_data$home_team, epv_data$epv_in, 1 - epv_data$epv_in)
@@ -506,7 +505,7 @@ build_epv_average <- function(my.files) {
   epv_data$visiting_epv_out <- ifelse(epv_data$team == epv_data$visiting_team, epv_data$epv_out, 1 - epv_data$epv_out)
   epv_data$visiting_epv_added <- epv_data$visiting_epv_out - epv_data$visiting_epv_in
 
-  epv_data <- epv_data %>% relocate(player_name, skq, input_type, output_type, epv_in, epv_out, epv_added, epv_ratio, match_date, team, opponent, skill, two_touch_ago, one_touch_ago, one_touch_future, two_touch_future, input_kcode, output_kcode, blockers)
+  epv_data <- epv_data %>% relocate(player_name, skq, input_type, output_type, epv_in, epv_out, epv_added, match_date, team, opponent, skill, two_touch_ago, one_touch_ago, one_touch_future, two_touch_future, input_kcode, output_kcode, blockers)
   epv_data <- epv_data[order(epv_data$id_touch),]
   print("Boom! Done.")
   return(epv_data)
