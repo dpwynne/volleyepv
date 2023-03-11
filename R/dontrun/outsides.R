@@ -1,11 +1,3 @@
-library(tidyverse)
-library(ggimage)
-library(gt)
-library(ggthemes)
-library(gtExtras)
-library(magick)
-library(OpenImageR)
-library(webshot2)
 
 #outsides$player_name <- ifelse(outsides$player_name == "SIMON TORWIE", "Simon Torwie", outsides$player_name)
 outsides <- subset(mens_test, position == "Outside")
