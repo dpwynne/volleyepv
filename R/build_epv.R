@@ -550,11 +550,11 @@ build_epv_average <- function(my.files) {
   positions <- add_position(epv_data)
   epv_data <- merge(epv_data, positions, all.x = TRUE)
 
-  team_conference_logos <- readxl::read_excel("data-raw/teams.xlsx")
   epv_data <- merge(epv_data, team_conference_logos, all.x = TRUE)
 
-  epv_data <- epv_data %>% relocate(player_name, skq, input_type, output_type, epv_in, epv_out, epv_added, match_date, team, conference, opponent, skill, two_touch_ago, one_touch_ago, one_touch_future, two_touch_future, input_kcode, output_kcode, blockers)
+  epv_data <- epv_data %>% relocate(player_name, skq, input_type, output_type, epv_in, epv_out, epv_added, match_date, team, position, conference, opponent, skill, two_touch_ago, one_touch_ago, one_touch_future, two_touch_future, input_kcode, output_kcode, blockers)
   epv_data <- epv_data[order(epv_data$id_touch),]
   print("Boom! Done.")
+  View(epv_data)
   return(epv_data)
 }
