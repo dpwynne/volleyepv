@@ -1,5 +1,9 @@
 
 build_epv_average <- function(my.files) {
+  library(tidyverse)
+  library(datavolley)
+  library(readxl)
+
   epv_data <- data.frame(matrix(ncol=0,nrow=0))
 
   for(i in 1:length(my.files)) {
@@ -505,7 +509,51 @@ build_epv_average <- function(my.files) {
   epv_data$visiting_epv_out <- ifelse(epv_data$team == epv_data$visiting_team, epv_data$epv_out, 1 - epv_data$epv_out)
   epv_data$visiting_epv_added <- epv_data$visiting_epv_out - epv_data$visiting_epv_in
 
-  epv_data <- epv_data %>% relocate(player_name, skq, input_type, output_type, epv_in, epv_out, epv_added, match_date, team, opponent, skill, two_touch_ago, one_touch_ago, one_touch_future, two_touch_future, input_kcode, output_kcode, blockers)
+  add_position <- function(data) {
+    touches <- aggregate(count ~ team*player_name, data, sum)
+    colnames(touches)[3] <- "totaltouches"
+    sets <- aggregate(count ~ team*player_name, subset(data, skill=="Set"), sum)
+    colnames(sets)[3] <- "sets"
+    rec_dig <- aggregate(count ~ team*player_name, subset(data, skill %in% c("Dig", "Reception")), sum)
+    colnames(rec_dig)[3] <- "rec_dig"
+    a <- aggregate(count ~ team*player_name, subset(data, skill == "Attack"), sum)
+    b <- aggregate(count ~ team*player_name, subset(data, skill == "Attack" & start_zone %in% c("2", "9")), sum)
+    colnames(b)[3] <- "Opposite"
+    c <- aggregate(count ~ team*player_name, subset(data, skill == "Attack" & start_zone %in% c("4", "8", "7")), sum)
+    colnames(c)[3] <- "Outside"
+    d <- aggregate(count ~ team*player_name, subset(data, skill == "Attack" & (start_zone == 3 | attack_code %in% c("X1", "X7", "XM", "X2", "CF", "CD"))), sum)
+    colnames(d)[3] <- "Middle"
+
+    total <- merge(touches, sets, all.x = TRUE)
+    total <- merge(total, rec_dig, all.x = TRUE)
+    total <- merge(total, a, all.x = TRUE)
+    total <- merge(total, b, all.x = TRUE)
+    total <- merge(total, c, all.x = TRUE)
+    total <- merge(total, d, all.x = TRUE)
+
+    total[is.na(total)] <- 0
+
+    total$p2 <- total$Opposite/total$count
+    total$p3 <- total$Middle/total$count
+    total$p4 <- total$Outside/total$count
+    total$position <- NA
+    total$position <- ifelse(total$sets / total$totaltouches > 0.5, "Setter", total$position)
+    total$position <- ifelse(is.na(total$position) & total$rec_dig / total$totaltouches > 0.5, "L/DS", total$position)
+    total$position <- ifelse(is.na(total$position) & total$p2 > total$p3 & total$p2 > total$p4, "Opposite", total$position)
+    total$position <- ifelse(is.na(total$position) & total$p3 > total$p2 & total$p3 > total$p4, "Middle", total$position)
+    total$position <- ifelse(is.na(total$position) & total$p4 > total$p3 & total$p4 > total$p2, "Outside", total$position)
+    total$position <- ifelse(is.na(total$position), "unsure", total$position)
+    total <- select(total, team, player_name, position)
+    return(total)
+  }
+
+  positions <- add_position(epv_data)
+  epv_data <- merge(epv_data, positions, all.x = TRUE)
+
+  team_conference_logos <- readxl::read_excel("data-raw/teams.xlsx")
+  epv_data <- merge(epv_data, team_conference_logos, all.x = TRUE)
+
+  epv_data <- epv_data %>% relocate(player_name, skq, input_type, output_type, epv_in, epv_out, epv_added, match_date, team, conference, opponent, skill, two_touch_ago, one_touch_ago, one_touch_future, two_touch_future, input_kcode, output_kcode, blockers)
   epv_data <- epv_data[order(epv_data$id_touch),]
   print("Boom! Done.")
   return(epv_data)
