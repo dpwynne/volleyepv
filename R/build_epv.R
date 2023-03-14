@@ -538,7 +538,7 @@ build_epv_average <- function(my.files) {
     total$p4 <- total$Outside/total$count
     total$position <- NA
     total$position <- ifelse(total$sets / total$totaltouches > 0.5, "Setter", total$position)
-    total$position <- ifelse(is.na(total$position) & total$rec_dig / total$totaltouches > 0.5, "L/DS", total$position)
+    total$position <- ifelse(is.na(total$position) & total$rec_dig / total$totaltouches > 0.45, "L/DS", total$position)
     total$position <- ifelse(is.na(total$position) & total$p2 > total$p3 & total$p2 > total$p4, "Opposite", total$position)
     total$position <- ifelse(is.na(total$position) & total$p3 > total$p2 & total$p3 > total$p4, "Middle", total$position)
     total$position <- ifelse(is.na(total$position) & total$p4 > total$p3 & total$p4 > total$p2, "Outside", total$position)
@@ -556,6 +556,5 @@ build_epv_average <- function(my.files) {
   epv_data <- epv_data %>% relocate(player_name, skq, input_type, output_type, epv_in, epv_out, epv_added, position, match_date, team, conference, opponent, opp_conference, skill, two_touch_ago, one_touch_ago, one_touch_future, two_touch_future, input_kcode, output_kcode, blockers)
   epv_data <- epv_data[order(epv_data$id_touch),]
   print("Boom! Done.")
-  View(epv_data)
   return(epv_data)
 }
