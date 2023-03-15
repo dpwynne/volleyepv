@@ -39,7 +39,7 @@ build_epv_pablo <- function(my.files) {
 
 
   # add in pablo ratings
-  rank_team <- subset(volleyR::pablo, rank_type == "Pablo", select = c(gender, season, team, ranking))
+  rank_team <- subset(volleyR::pablo, select = c(gender, season, team, ranking))
   colnames(rank_team) <- c("gender", "year", "team", "rank_team")
   rank_opp <- rank_team
   colnames(rank_opp) <- c("gender", "year", "opponent", "rank_opponent")
