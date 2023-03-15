@@ -1,3 +1,5 @@
+my.files <- list.files(path = "./dvwfiles", pattern = "*.dvw", full.names = TRUE)
+
 
 build_epv_pablo <- function(my.files) {
   library(tidyverse)
@@ -381,18 +383,106 @@ build_epv_pablo <- function(my.files) {
   fit_output_func(b)
   fit_setoutput_func(a)
 
-  suppressWarnings({
-    serve_baseline_model <- glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "serve_baseline"), family = "binomial")
-    attack_overpass_model <- glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "attack_overpass"), family = "binomial")
-    attack_weird_model <- glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "attack_weird"), family = "binomial")
-    attack_poor_set_model <- glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "attack_poor_set"), family = "binomial")
-    block_weird_model <- glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "block_weird"), family = "binomial")
-    dig_overpass_model <- glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "dig_overpass"), family = "binomial")
-    dig_weird_model <- glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "dig_weird"), family = "binomial")
-    freeball_baseline_model <- glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "freeball_baseline"), family = "binomial")
-    set_poor_model <- glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, output_type == "set_poor"), family = "binomial")
-    block_touch_stuff_model <- glm(rally_winner ~ rank_team + rank_opponent + speed + block_time, subset(epv_data, skill=="Dig"), family = "binomial")
-  })
+
+
+
+
+    serve_baseline_model <- function(epv_data) {
+      tryCatch (
+        {serve_baseline_model <- glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "serve_baseline"), family = "binomial")},
+        error = function(error) {
+          return(NA)
+        }
+      )
+    }
+    attack_overpass_model <- function(epv_data) {
+      tryCatch (
+        {attack_overpass <- glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "attack_overpass"), family = "binomial")},
+        error = function(error) {
+          return(NA)
+        }
+      )
+    }
+    attack_weird_model <- function(epv_data) {
+      tryCatch (
+        {attack_weird <- glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "attack_weird"), family = "binomial")},
+        error = function(error) {
+          return(NA)
+        }
+      )
+    }
+    attack_poor_set_model <- function(epv_data) {
+      tryCatch (
+        {attack_poor_set <- glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "attack_poor_set"), family = "binomial")},
+        error = function(error) {
+          return(NA)
+        }
+      )
+    }
+    block_weird_model <- function(epv_data) {
+      tryCatch (
+        {block_weird <- glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "block_weird"), family = "binomial")},
+        error = function(error) {
+          return(NA)
+        }
+      )
+    }
+    dig_overpass_model <- function(epv_data) {
+      tryCatch (
+        {dig_overpass <- glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "dig_overpass"), family = "binomial")},
+        error = function(error) {
+          return(NA)
+        }
+      )
+    }
+    dig_weird_model <- function(epv_data) {
+      tryCatch (
+        {dig_weird <- glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "dig_weird"), family = "binomial")},
+        error = function(error) {
+          return(NA)
+        }
+      )
+    }
+    freeball_baseline_model <- function(epv_data) {
+      tryCatch (
+        {freeball_baseline <- glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, input_type == "freeball_baseline"), family = "binomial")},
+        error = function(error) {
+          return(NA)
+        }
+      )
+    }
+    set_poor_model <- function(epv_data) {
+      tryCatch (
+        {set_poor <- glm(rally_winner ~ rank_team + rank_opponent, subset(epv_data, output_type == "set_poor"), family = "binomial")},
+        error = function(error) {
+          return(NA)
+        }
+      )
+    }
+    block_touch_stuff_model <- function(epv_data) {
+      tryCatch (
+        {block_touch_stuff <- glm(rally_winner ~ rank_team + rank_opponent + speed + block_time, subset(epv_data, skill=="Dig"), family = "binomial")},
+        error = function(error) {
+          return(NA)
+        }
+      )
+    }
+
+
+  serve_baseline_model <- serve_baseline_model(epv_data)
+  attack_overpass_model <- attack_overpass_model(epv_data)
+  attack_weird_model <- attack_weird_model(epv_data)
+  attack_poor_set_model <- attack_poor_set_model(epv_data)
+  block_weird_model <- block_weird_model(epv_data)
+  dig_overpass_model <- dig_overpass_model(epv_data)
+  dig_weird_model <- dig_weird_model(epv_data)
+  freeball_baseline_model <- freeball_baseline_model(epv_data)
+  set_poor_model <- set_poor_model(epv_data)
+  block_touch_stuff_model <- block_touch_stuff_model(epv_data)
+
+
+
+
 
   epv_data$epv_in <- NULL
   epv_data$epv_out <- NULL
