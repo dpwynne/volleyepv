@@ -1,7 +1,7 @@
 my.files <- list.files(path = "./dvwfiles", pattern = "*.dvw", full.names = TRUE)
 
 
-build_epv_opponent <- function(my.files) {
+build_epv_opponent_ranking <- function(my.files) {
   library(tidyverse)
   library(datavolley)
   library(readxl)
