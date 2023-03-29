@@ -571,19 +571,19 @@ build_epv_opponent_ranking <- function(my.files) {
 
 
   add_position <- function(data) {
-    touches <- aggregate(count ~ team*player_name, data, sum)
-    colnames(touches)[3] <- "totaltouches"
-    sets <- aggregate(count ~ team*player_name, subset(data, skill=="Set"), sum)
-    colnames(sets)[3] <- "sets"
-    rec_dig <- aggregate(count ~ team*player_name, subset(data, skill %in% c("Dig", "Reception")), sum)
-    colnames(rec_dig)[3] <- "rec_dig"
-    a <- aggregate(count ~ team*player_name, subset(data, skill == "Attack"), sum)
-    b <- aggregate(count ~ team*player_name, subset(data, skill == "Attack" & start_zone %in% c("2", "9")), sum)
-    colnames(b)[3] <- "Opposite"
-    c <- aggregate(count ~ team*player_name, subset(data, skill == "Attack" & start_zone %in% c("4", "8", "7")), sum)
-    colnames(c)[3] <- "Outside"
-    d <- aggregate(count ~ team*player_name, subset(data, skill == "Attack" & (start_zone == 3 | attack_code %in% c("X1", "X7", "XM", "X2", "CF", "CD"))), sum)
-    colnames(d)[3] <- "Middle"
+    touches <- aggregate(count ~ team*player_name*year, data, sum)
+    colnames(touches)[4] <- "totaltouches"
+    sets <- aggregate(count ~ team*player_name*year, subset(data, skill=="Set"), sum)
+    colnames(sets)[4] <- "sets"
+    rec_dig <- aggregate(count ~ team*player_name*year, subset(data, skill %in% c("Dig", "Reception")), sum)
+    colnames(rec_dig)[4] <- "rec_dig"
+    a <- aggregate(count ~ team*player_name*year, subset(data, skill == "Attack"), sum)
+    b <- aggregate(count ~ team*player_name*year, subset(data, skill == "Attack" & start_zone %in% c("2", "9")), sum)
+    colnames(b)[4] <- "Opposite"
+    c <- aggregate(count ~ team*player_name*year, subset(data, skill == "Attack" & start_zone %in% c("4", "8", "7")), sum)
+    colnames(c)[4] <- "Outside"
+    d <- aggregate(count ~ team*player_name*year, subset(data, skill == "Attack" & (start_zone == 3 | attack_code %in% c("X1", "X7", "XM", "X2", "CF", "CD"))), sum)
+    colnames(d)[4] <- "Middle"
 
     total <- merge(touches, sets, all.x = TRUE)
     total <- merge(total, rec_dig, all.x = TRUE)
@@ -599,12 +599,12 @@ build_epv_opponent_ranking <- function(my.files) {
     total$p4 <- total$Outside/total$count
     total$position <- NA
     total$position <- ifelse(total$sets / total$totaltouches > 0.5, "Setter", total$position)
-    total$position <- ifelse(is.na(total$position) & total$rec_dig / total$totaltouches > 0.45, "L/DS", total$position)
-    total$position <- ifelse(is.na(total$position) & total$p2 > total$p3 & total$p2 > total$p4, "Opposite", total$position)
-    total$position <- ifelse(is.na(total$position) & total$p3 > total$p2 & total$p3 > total$p4, "Middle", total$position)
-    total$position <- ifelse(is.na(total$position) & total$p4 > total$p3 & total$p4 > total$p2, "Outside", total$position)
+    total$position <- ifelse(is.na(total$position) & total$p2 > total$p3 & total$p2 > total$p4 & (total$count / total$totaltouches) > 0.2, "Opposite", total$position)
+    total$position <- ifelse(is.na(total$position) & total$p3 > total$p2 & total$p3 > total$p4 & (total$count / total$totaltouches) > 0.2, "Middle", total$position)
+    total$position <- ifelse(is.na(total$position) & total$p4 > total$p3 & total$p4 > total$p2 & (total$count / total$totaltouches) > 0.2, "Outside", total$position)
+    total$position <- ifelse(is.na(total$position) & (total$rec_dig / total$totaltouches) > 0.45, "L/DS", total$position)
     total$position <- ifelse(is.na(total$position), "unsure", total$position)
-    total <- select(total, team, player_name, position)
+    total <- select(total, team, year, player_name, position)
     return(total)
   }
 
