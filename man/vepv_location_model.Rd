@@ -2,9 +2,12 @@
 % Please edit documentation in R/modeling.R
 \name{vepv_input_location_model}
 \alias{vepv_input_location_model}
+\alias{vepv_output_location_model}
 \title{Input and Output Models}
 \usage{
 vepv_input_location_model(plays, touch_type, trained_model = NULL)
+
+vepv_output_location_model(plays, touch_type, trained_model = NULL)
 }
 \arguments{
 \item{plays}{the data frame containing the plays}

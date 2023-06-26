@@ -28,6 +28,8 @@ vepv_mean_model <- function(plays, touch_type, impute_value = NA_real_){
 #'
 #' Calculates expected rally efficiency using a logistic regression model, which depends on the touch type
 #'
+#' @rdname vepv_location_model
+#'
 #' @param plays the data frame containing the plays
 #' @param touch_type the type of touch (as indicated by the `input_type` or `output_type` column of `plays`)
 #' @param trained_model a pre-trained model (of class "`glm`") used to make predictions
@@ -67,6 +69,7 @@ vepv_input_location_model <- function(plays, touch_type, trained_model = NULL){
 
 }
 
+#' @rdname vepv_location_model
 vepv_output_location_model <- function(plays, touch_type, trained_model = NULL){
 
   if(!is.na(touch_type)){
