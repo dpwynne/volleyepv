@@ -2,13 +2,14 @@ Package: volleyepv
 Title: Create Expected Possession Value Metrics for Volleyball
 Version: 0.1.0
 Authors@R: c(
-    person("Chad", "Gordon", role = c("aut", "cre")),
+    person("Chad", "Gordon", email = "chadgordon09@gmail.com", role = c("aut", "cre")),
     person("Dwight", "Wynne", role = "aut")
   )
 Description: Builds off parsing from Ben Raymond's openvolley/datavolley
     package. Using the sequence in the rally and coordinates of touches,
     we can calculate the likelihood of winning the rally on any given
     touch.
+Imports: datavolley, dplyr, readr, readxl, rlang, stringr
 License: GPL-3
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
