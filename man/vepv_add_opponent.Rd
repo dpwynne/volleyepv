@@ -2,7 +2,7 @@
 % Please edit documentation in R/data_cleaning.R
 \name{vepv_add_opponent}
 \alias{vepv_add_opponent}
-\title{Adds a column indicating the match year to a dataset of plays}
+\title{Adds a column indicating the opposing team to a dataset of plays}
 \usage{
 vepv_add_opponent(plays)
 }
@@ -13,5 +13,5 @@ vepv_add_opponent(plays)
 the dataset with a new column \code{opponent}
 }
 \description{
-Adds a column indicating the match year to a dataset of plays
+Adds a column indicating the opposing team to a dataset of plays
 }

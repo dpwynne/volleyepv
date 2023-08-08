@@ -9,8 +9,10 @@ Description: Builds off parsing from Ben Raymond's openvolley/datavolley
     package. Using the sequence in the rally and coordinates of touches,
     we can calculate the likelihood of winning the rally on any given
     touch.
+Depends: R (>= 2.10)
 Imports: datavolley, dplyr, readr, readxl, rlang, stringr
 License: GPL-3
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.1
+LazyData: true
