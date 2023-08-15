@@ -24,6 +24,30 @@ vepv_mean_model <- function(plays, touch_type, impute_value = NA_real_){
 
 }
 
+#' Simple ratings-based model
+#'
+#' Calculates expected rally efficiency using a simple proportion of these types of touches that result in winning the point,
+#' adjusted for the relative quality of team and opponent.
+#'
+#' @param plays the data frame containing the plays
+#' @param touch_type the type of touch (as indicated by the `input_type` column of `plays`)
+#' @param impute_value the value to impute for the rally efficiency for this type of touch, if not estimated directly from data
+#'
+#' @return the proportion of these touches that eventually resulted in winning the point
+#'
+#' @export
+
+vepv_ratings_only_model <- function(plays, touch_type){
+
+  plays_subset <- subset(plays, input_type == touch_type)
+
+  glm_formula <- as.formula("rally_winner ~ team_rating + opponent_rating")
+
+  eff_model <- glm(glm_formula, data = plays_subset, family = binomial(link = "logit"), na.action = na.exclude)
+
+  return(predict(eff_model, plays, type = "response"))
+}
+
 #' Input and Output Models
 #'
 #' Calculates expected rally efficiency using a logistic regression model, which depends on the touch type
@@ -54,12 +78,19 @@ vepv_input_location_model <- function(plays, touch_type, trained_model = NULL){
   } else {
 
     predictor_variables <- dplyr::case_when(
-      input_type %in% c("dig_blocktouch", "cover_blocktouch") ~ "speed + block_touch + reaction_time",
-      input_type == "set_regular" ~ "poly(input_coord_x, 4) + poly(input_coord_y, 2) + input_kcode",
+      touch_type %in% c("dig_blocktouch", "cover_blocktouch") ~ "speed + block_touch + reaction_time",
+      touch_type == "set_regular" ~ "poly(input_coord_x, 4) + poly(input_coord_y, 2) + input_kcode",
       TRUE ~ "poly(input_coord_x, 4) + poly(input_coord_y, 2)"
     )
 
     glm_formula <- as.formula(paste("rally_winner ~", predictor_variables))
+
+    if(stringr::str_detect(predictor_variables, "input_coord_x")){
+      plays_subset <- plays_subset |> dplyr::filter(
+        !is.na(input_coord_x),
+        !is.na(input_coord_y)
+      )
+    }
 
     eff_model <- glm(glm_formula, data = plays_subset, family = binomial(link = "logit"), na.action = na.exclude)
 
@@ -85,7 +116,14 @@ vepv_output_location_model <- function(plays, touch_type, trained_model = NULL){
 
   glm_formula <- as.formula(paste("rally_winner ~", predictor_variables))
 
-  eff_model <- glm(glm_formula, data = plays, family = binomial(link = "logit"), na.action = na.exclude)
+  if(stringr::str_detect(predictor_variables, "input_coord_x")){
+    plays_subset <- plays_subset |> dplyr::filter(
+      !is.na(input_coord_x),
+      !is.na(input_coord_y)
+    )
+  }
+
+  eff_model <- glm(glm_formula, data = plays_subset, family = binomial(link = "logit"), na.action = na.exclude)
 
   return(predict(eff_model, plays, type = "response"))
 
@@ -105,7 +143,7 @@ vepv_output_location_model <- function(plays, touch_type, trained_model = NULL){
 
 vepv_epv <- function(plays, touch_epv = NULL){
 
-  plays_out2 <- plays %>% dplyr::mutate(
+  plays_out2 <- plays |> dplyr::mutate(
     epv_in = NA_real_,
     epv_out = NA_real_
   )
@@ -114,20 +152,20 @@ vepv_epv <- function(plays, touch_epv = NULL){
 
   # up to 5 iterations - if we still somehow have NAs after going through the loop 5 times, something's seriously wrong
   while((any(is.na(plays_out2$epv_in) | is.na(plays_out2$epv_out))) & iter <= 5){
-    if(data.class(touch_epv) == "data.frame"){
+    #if(data.class(touch_epv) == "data.frame"){
 
       # First pass - input models
       plays_in <- plays_out2 |> dplyr::mutate(
         epv_in = dplyr::case_when(
-          is.na(.data$epv_in) & .data$input_type == "serve_baseline" ~ vepv_mean_model(plays, touch_type = "serve_baseline", impute_value = touch_epv$epv[touch_epv$touch == "serve_baseline"]),
-          is.na(.data$epv_in) & .data$input_type == "attack_overpass" ~ vepv_mean_model(plays, touch_type = "attack_overpass", impute_value = touch_epv$epv[touch_epv$touch == "attack_overpass"]),
-          is.na(.data$epv_in) & .data$input_type == "attack_weird" ~ vepv_mean_model(plays, touch_type = "attack_weird", impute_value = touch_epv$epv[touch_epv$touch == "attack_weird"]),
-          is.na(.data$epv_in) & .data$input_type == "attack_poor_set" ~ vepv_mean_model(plays, touch_type = "attack_poor_set", impute_value = touch_epv$epv[touch_epv$touch == "attack_poor_set"]),
-          is.na(.data$epv_in) & .data$input_type == "block_weird" ~ vepv_mean_model(plays, touch_type = "block_weird", impute_value = touch_epv$epv[touch_epv$touch == "block_weird"]),
-          is.na(.data$epv_in) & .data$input_type == "dig_overpass" ~ vepv_mean_model(plays, touch_type = "dig_overpass", impute_value = touch_epv$epv[touch_epv$touch == "dig_overpass"]),
-          is.na(.data$epv_in) & .data$input_type == "dig_weird" ~ vepv_mean_model(plays, touch_type = "dig_weird", impute_value = touch_epv$epv[touch_epv$touch == "dig_weird"]),
-          is.na(.data$epv_in) & .data$input_type == "freeball_baseline" ~ vepv_mean_model(plays, touch_type = "freeball_baseline", impute_value = touch_epv$epv[touch_epv$touch == "freeball_baseline"]),
-          is.na(.data$epv_in) & .data$input_type == "set_poor" ~ vepv_mean_model(plays, touch_type = "set_poor", impute_value = touch_epv$epv[touch_epv$touch == "set_poor"]),
+          is.na(.data$epv_in) & .data$input_type == "serve_baseline" ~ vepv_mean_model(plays, touch_type = "serve_baseline", impute_value = ifelse((is.data.frame(touch_epv) & ("epv" %in% colnames(touch_epv)) & ("touch" %in% colnames(touch_epv))), touch_epv$epv[touch_epv$touch == "serve_baseline"], NA_real_)),
+          is.na(.data$epv_in) & .data$input_type == "attack_overpass" ~ vepv_mean_model(plays, touch_type = "attack_overpass", impute_value = ifelse((is.data.frame(touch_epv) & ("epv" %in% colnames(touch_epv)) & ("touch" %in% colnames(touch_epv))), touch_epv$epv[touch_epv$touch == "attack_overpass"], NA_real_)),
+          is.na(.data$epv_in) & .data$input_type == "attack_weird" ~ vepv_mean_model(plays, touch_type = "attack_weird", impute_value = ifelse((is.data.frame(touch_epv) & ("epv" %in% colnames(touch_epv)) & ("touch" %in% colnames(touch_epv))), touch_epv$epv[touch_epv$touch == "attack_weird"], NA_real_)),
+          is.na(.data$epv_in) & .data$input_type == "attack_poor_set" ~ vepv_mean_model(plays, touch_type = "attack_poor_set", impute_value = ifelse((is.data.frame(touch_epv) & ("epv" %in% colnames(touch_epv)) & ("touch" %in% colnames(touch_epv))), touch_epv$epv[touch_epv$touch == "attack_poor_set"], NA_real_)),
+          is.na(.data$epv_in) & .data$input_type == "block_weird" ~ vepv_mean_model(plays, touch_type = "block_weird", impute_value = ifelse((is.data.frame(touch_epv) & ("epv" %in% colnames(touch_epv)) & ("touch" %in% colnames(touch_epv))), touch_epv$epv[touch_epv$touch == "block_weird"], NA_real_)),
+          is.na(.data$epv_in) & .data$input_type == "dig_overpass" ~ vepv_mean_model(plays, touch_type = "dig_overpass", impute_value = ifelse((is.data.frame(touch_epv) & ("epv" %in% colnames(touch_epv)) & ("touch" %in% colnames(touch_epv))), touch_epv$epv[touch_epv$touch == "dig_overpass"], NA_real_)),
+          is.na(.data$epv_in) & .data$input_type == "dig_weird" ~ vepv_mean_model(plays, touch_type = "dig_weird", impute_value = ifelse((is.data.frame(touch_epv) & ("epv" %in% colnames(touch_epv)) & ("touch" %in% colnames(touch_epv))), touch_epv$epv[touch_epv$touch == "dig_weird"], NA_real_)),
+          is.na(.data$epv_in) & .data$input_type == "freeball_baseline" ~ vepv_mean_model(plays, touch_type = "freeball_baseline", impute_value = ifelse((is.data.frame(touch_epv) & ("epv" %in% colnames(touch_epv)) & ("touch" %in% colnames(touch_epv))), touch_epv$epv[touch_epv$touch == "freeball_baseline"], NA_real_)),
+          is.na(.data$epv_in) & .data$input_type == "set_poor" ~ vepv_mean_model(plays, touch_type = "set_poor", impute_value = ifelse((is.data.frame(touch_epv) & ("epv" %in% colnames(touch_epv)) & ("touch" %in% colnames(touch_epv))), touch_epv$epv[touch_epv$touch == "serve_baseline"], NA_real_)),
           is.na(.data$epv_in) & .data$input_type %in% c("dig_blocktouch", "cover_blocktouch") ~ vepv_input_location_model(plays, touch_type = "dig_blocktouch"),
           is.na(.data$epv_in) & .data$input_type == "set_regular" & !is.na(.data$input_coord_x) & !is.na(.data$input_coord_y) ~ vepv_input_location_model(plays, touch_type = "set_regular"),
           is.na(.data$epv_in) & .data$input_type == "set_regular" ~ vepv_input_location_model(plays, touch_type = "set_regular", trained_model = glm(rally_winner ~ blockers, data = plays, subset = (input_type == "set_regular"))),
@@ -141,9 +179,9 @@ vepv_epv <- function(plays, touch_epv = NULL){
         epv_out = dplyr::case_when(
           is.na(.data$epv_out) & .data$output_type %in% c("serve_ace", "attack_kill", "block_stuff") ~ 1.0,
           is.na(.data$epv_out) & .data$output_type %in% c("serve_error", "reception_error", "set_error", "attack_error", "attack_blocked", "block_out", "dig_error", "cover_error", "freeball_error") ~ 0.0,
-          is.na(.data$epv_out) & .data$output_type %in% c("serve_overpass_attack", "attack_block_into_overpass_attack", "attack_into_overpass_attack") ~ vepv_mean_model(plays, touch_type = "attack_overpass", impute_value = touch_epv$epv[touch_epv$touch == "attack_overpass"]),
-          is.na(.data$epv_out) & .data$output_type %in% c("reception_overpass_attack", "dig_overpass_attack", "freeball_overpass_attack") ~ (1 - vepv_mean_model(plays, touch_type = "attack_overpass", impute_value = touch_epv$epv[touch_epv$touch == "attack_overpass"])),
-          is.na(.data$epv_out) & .data$output_type == "set_poor" & .data$team == dplyr::lead(.data$team, 1) ~ vepv_mean_model(plays, touch_type = "set_poor", impute_value = touch_epv$epv[touch_epv$touch == "set_poor"]),
+          is.na(.data$epv_out) & .data$output_type %in% c("serve_overpass_attack", "attack_block_into_overpass_attack", "attack_into_overpass_attack") ~ vepv_mean_model(plays, touch_type = "attack_overpass", impute_value = ifelse((is.data.frame(touch_epv) & ("epv" %in% colnames(touch_epv)) & ("touch" %in% colnames(touch_epv))), touch_epv$epv[touch_epv$touch == "attack_overpass"], NA_real_)),
+          is.na(.data$epv_out) & .data$output_type %in% c("reception_overpass_attack", "dig_overpass_attack", "freeball_overpass_attack") ~ (1 - vepv_mean_model(plays, touch_type = "attack_overpass", impute_value = ifelse((is.data.frame(touch_epv) & ("epv" %in% colnames(touch_epv)) & ("touch" %in% colnames(touch_epv))), touch_epv$epv[touch_epv$touch == "attack_overpass"], NA_real_))),
+          is.na(.data$epv_out) & .data$output_type == "set_poor" & .data$team == dplyr::lead(.data$team, 1) ~ vepv_mean_model(plays, touch_type = "set_poor", impute_value = ifelse((is.data.frame(touch_epv) & ("epv" %in% colnames(touch_epv)) & ("touch" %in% colnames(touch_epv))), touch_epv$epv[touch_epv$touch == "set_poor"], NA_real_)),
           is.na(.data$epv_out) & .data$output_type == "set_poor" & .data$point_id == dplyr::lead(.data$point_id, 1) ~ 1 - dplyr::lead(.data$epv_in, 1),
           is.na(.data$epv_out) & .data$output_type == "set_poor" ~ 0.0,
           is.na(.data$epv_out) & .data$skill == "Block" & dplyr::lead(.data$skill, 1) %in% c("Dig", "Cover") ~ dplyr::lead(.data$epv_in, 1),
@@ -152,54 +190,55 @@ vepv_epv <- function(plays, touch_epv = NULL){
         )
       )
 
-    } else {
+    #} else {
       # First pass - input models
-      plays_in <- plays_out2 |> dplyr::mutate(
-        epv_in = dplyr::case_when(
-          is.na(.data$epv_in) & .data$input_type == "serve_baseline" ~ vepv_mean_model(plays, touch_type = "serve_baseline", impute_value = NA_real_),
-          is.na(.data$epv_in) & .data$input_type == "attack_overpass" ~ vepv_mean_model(plays, touch_type = "attack_overpass", impute_value = NA_real_),
-          is.na(.data$epv_in) & .data$input_type == "attack_weird" ~ vepv_mean_model(plays, touch_type = "attack_weird", impute_value = NA_real_),
-          is.na(.data$epv_in) & .data$input_type == "attack_poor_set" ~ vepv_mean_model(plays, touch_type = "attack_poor_set", impute_value = NA_real_),
-          is.na(.data$epv_in) & .data$input_type == "block_weird" ~ vepv_mean_model(plays, touch_type = "block_weird", impute_value = NA_real_),
-          is.na(.data$epv_in) & .data$input_type == "dig_overpass" ~ vepv_mean_model(plays, touch_type = "dig_overpass", impute_value = NA_real_),
-          is.na(.data$epv_in) & .data$input_type == "dig_weird" ~ vepv_mean_model(plays, touch_type = "dig_weird", impute_value = NA_real_),
-          is.na(.data$epv_in) & .data$input_type == "freeball_baseline" ~ vepv_mean_model(plays, touch_type = "freeball_baseline", impute_value = NA_real_),
-          is.na(.data$epv_in) & .data$input_type == "set_poor" ~ vepv_mean_model(plays, touch_type = "set_poor", impute_value = NA_real_),
-          is.na(.data$epv_in) & .data$input_type %in% c("dig_blocktouch", "cover_blocktouch") ~ vepv_input_location_model(plays, touch_type = "dig_blocktouch"),
-          is.na(.data$epv_in) & .data$input_type == "set_regular" & !is.na(.data$input_coord_x) & !is.na(.data$input_coord_y) ~ vepv_input_location_model(plays, touch_type = "set_regular"),
-          is.na(.data$epv_in) & .data$input_type == "set_regular" ~ vepv_input_location_model(plays, touch_type = "set_regular", trained_model = glm(rally_winner ~ blockers, data = plays, subset = (input_type == "set_regular"))),
-          is.na(.data$epv_in) & !is.na(.data$input_coord_x) & !is.na(.data$input_coord_y) ~ vepv_input_location_model(plays, touch_type = NA_character_),
-          TRUE ~ .data$epv_in
-        )
-      )
+      # plays_in <- plays_out2 |> dplyr::mutate(
+      #   epv_in = dplyr::case_when(
+      #     is.na(.data$epv_in) & .data$input_type == "serve_baseline" ~ vepv_mean_model(plays, touch_type = "serve_baseline", impute_value = NA_real_),
+      #     is.na(.data$epv_in) & .data$input_type == "attack_overpass" ~ vepv_mean_model(plays, touch_type = "attack_overpass", impute_value = NA_real_),
+      #     is.na(.data$epv_in) & .data$input_type == "attack_weird" ~ vepv_mean_model(plays, touch_type = "attack_weird", impute_value = NA_real_),
+      #     is.na(.data$epv_in) & .data$input_type == "attack_poor_set" ~ vepv_mean_model(plays, touch_type = "attack_poor_set", impute_value = NA_real_),
+      #     is.na(.data$epv_in) & .data$input_type == "block_weird" ~ vepv_mean_model(plays, touch_type = "block_weird", impute_value = NA_real_),
+      #     is.na(.data$epv_in) & .data$input_type == "dig_overpass" ~ vepv_mean_model(plays, touch_type = "dig_overpass", impute_value = NA_real_),
+      #     is.na(.data$epv_in) & .data$input_type == "dig_weird" ~ vepv_mean_model(plays, touch_type = "dig_weird", impute_value = NA_real_),
+      #     is.na(.data$epv_in) & .data$input_type == "freeball_baseline" ~ vepv_mean_model(plays, touch_type = "freeball_baseline", impute_value = NA_real_),
+      #     is.na(.data$epv_in) & .data$input_type == "set_poor" ~ vepv_mean_model(plays, touch_type = "set_poor", impute_value = NA_real_),
+      #     is.na(.data$epv_in) & .data$input_type %in% c("dig_blocktouch", "cover_blocktouch") ~ vepv_input_location_model(plays, touch_type = "dig_blocktouch"),
+      #     is.na(.data$epv_in) & .data$input_type == "set_regular" & !is.na(.data$input_coord_x) & !is.na(.data$input_coord_y) ~ vepv_input_location_model(plays, touch_type = "set_regular"),
+      #     is.na(.data$epv_in) & .data$input_type == "set_regular" ~ vepv_input_location_model(plays, touch_type = "set_regular", trained_model = glm(rally_winner ~ blockers, data = plays, subset = (input_type == "set_regular"))),
+      #     is.na(.data$epv_in) & !is.na(.data$input_coord_x) & !is.na(.data$input_coord_y) ~ vepv_input_location_model(plays, touch_type = NA_character_),
+      #     TRUE ~ .data$epv_in
+      #   )
+      # )
+      #
+      # # first pass - output
+      # plays_out <- plays_in |> dplyr::mutate(
+      #   epv_out = dplyr::case_when(
+      #     is.na(.data$epv_out) & .data$output_type %in% c("serve_ace", "attack_kill", "block_stuff") ~ 1.0,
+      #     is.na(.data$epv_out) & .data$output_type %in% c("serve_error", "reception_error", "set_error", "attack_error", "attack_blocked", "block_out", "dig_error", "cover_error", "freeball_error") ~ 0.0,
+      #     is.na(.data$epv_out) & .data$output_type %in% c("serve_overpass_attack", "attack_block_into_overpass_attack", "attack_into_overpass_attack") ~ vepv_mean_model(plays, touch_type = "attack_overpass", impute_value = NA_real_),
+      #     is.na(.data$epv_out) & .data$output_type %in% c("reception_overpass_attack", "dig_overpass_attack", "freeball_overpass_attack") ~ (1 - vepv_mean_model(plays, touch_type = "attack_overpass", impute_value = NA_real_)),
+      #     is.na(.data$epv_out) & .data$output_type == "set_poor" & .data$team == dplyr::lead(.data$team, 1) ~ vepv_mean_model(plays, touch_type = "set_poor", impute_value = NA_real_),
+      #     is.na(.data$epv_out) & .data$output_type == "set_poor" & .data$point_id == dplyr::lead(.data$point_id, 1) ~ 1 - dplyr::lead(.data$epv_in, 1),
+      #     is.na(.data$epv_out) & .data$output_type == "set_poor" ~ 0.0,
+      #     is.na(.data$epv_out) & .data$skill == "Block" & dplyr::lead(.data$skill, 1) %in% c("Dig", "Cover") ~ dplyr::lead(.data$epv_in, 1),
+      #     TRUE ~ .data$epv_out
+      #   )
+      # )
 
-      # first pass - output
-      plays_out <- plays_in |> dplyr::mutate(
-        epv_out = dplyr::case_when(
-          is.na(.data$epv_out) & .data$output_type %in% c("serve_ace", "attack_kill", "block_stuff") ~ 1.0,
-          is.na(.data$epv_out) & .data$output_type %in% c("serve_error", "reception_error", "set_error", "attack_error", "attack_blocked", "block_out", "dig_error", "cover_error", "freeball_error") ~ 0.0,
-          is.na(.data$epv_out) & .data$output_type %in% c("serve_overpass_attack", "attack_block_into_overpass_attack", "attack_into_overpass_attack") ~ vepv_mean_model(plays, touch_type = "attack_overpass", impute_value = NA_real_),
-          is.na(.data$epv_out) & .data$output_type %in% c("reception_overpass_attack", "dig_overpass_attack", "freeball_overpass_attack") ~ (1 - vepv_mean_model(plays, touch_type = "attack_overpass", impute_value = NA_real_)),
-          is.na(.data$epv_out) & .data$output_type == "set_poor" & .data$team == dplyr::lead(.data$team, 1) ~ vepv_mean_model(plays, touch_type = "set_poor", impute_value = NA_real_),
-          is.na(.data$epv_out) & .data$output_type == "set_poor" & .data$point_id == dplyr::lead(.data$point_id, 1) ~ 1 - dplyr::lead(.data$epv_in, 1),
-          is.na(.data$epv_out) & .data$output_type == "set_poor" ~ 0.0,
-          is.na(.data$epv_out) & .data$skill == "Block" & dplyr::lead(.data$skill, 1) %in% c("Dig", "Cover") ~ dplyr::lead(.data$epv_in, 1),
-          TRUE ~ .data$epv_out
-        )
-      )
-
-    }
+    #}
 
     # second pass - fill in using lag and lead
     plays_in2 <- plays_out |> dplyr::mutate(
       epv_in = dplyr::case_when(
-        .data$input_type == "attack_regular" & dplyr::lag(.data$output_type, 1) == "set_regular" ~ dplyr::lag(.data$epv_out, 1),
+        #.data$input_type == "attack_regular" & dplyr::lag(.data$output_type, 1) == "set_regular" ~ dplyr::lag(.data$epv_out, 1),
         .data$input_type %in% c("dig_regular", "cover_regular") & dplyr::lag(input_type, 1) == "attack_regular" ~ dplyr::lag(.data$epv_in, 1),
-        .data$input_type == "attack_weird" ~ dplyr::lag(.data$epv_out, 1),
+        is.na(.data$epv_in) & .data$input_type == "block_overpass" ~ 1 - dplyr::lag(.data$epv_in, 1),
+        #.data$input_type == "attack_weird" ~ dplyr::lag(.data$epv_out, 1),
         .data$input_type == "reception_baseline" ~ 1 - dplyr::lag(.data$epv_in, 1),
         (.data$input_type == "block_regular" & dplyr::lag(.data$skill, 1) == "Attack") | (.data$input_type == "dig_regular" & dplyr::lag(input_type, 1) %in% c("attack_weird", "attack_poor_set")) ~ 1 - dplyr::lag(.data$epv_in, 1),
-        is.na(.data$epv_in) & .data$team == dplyr::lag(.data$team) ~ dplyr::lag(.data$epv_in, 1),
-        is.na(.data$epv_in) & .data$team != dplyr::lag(.data$team) ~ 1 - dplyr::lag(.data$epv_in, 1),
+        is.na(.data$epv_in) & .data$team == dplyr::lag(.data$team) ~ dplyr::lag(.data$epv_out, 1),
+        is.na(.data$epv_in) & .data$team != dplyr::lag(.data$team) ~ 1 - dplyr::lag(.data$epv_out, 1),
         TRUE ~ .data$epv_in
       )
     )
@@ -207,12 +246,15 @@ vepv_epv <- function(plays, touch_epv = NULL){
     plays_out2 <- plays_in2 |> dplyr::mutate(
       epv_out = dplyr::case_when(
         (.data$output_type %in% paste0(c("reception", "dig", "cover", "freeball"), "_overpass_non_attack")) | (.data$skill == "Serve" & dplyr::lead(.data$skill, 1) == "Reception") ~ 1 - dplyr::lead(.data$epv_out, 1),
+        #(.data$output_type == "reception_regular" & dplyr::lead(.data$team, 1) == .data$team) ~ dplyr::lead(.data$epv_in, 1),
+        .data$output_type == "attack_block_regular" ~ 1 - dplyr::lead(.data$epv_out, 1),
+        (.data$output_type == "serve_regular" & dplyr::lead(.data$skill, 1) == "Reception" & dplyr::lead(.data$team, 2) != .data$team) ~ dplyr::lead(.data$epv_in, 2),
         (.data$output_type == "attack_regular" & dplyr::lead(.data$input_type, 1) == "dig_regular") | (.data$output_type == "attack_regular_block") ~ 1 - dplyr::lead(.data$epv_out, 1),
         (.data$output_type == "block_regular" & dplyr::lag(.data$input_type, 1) == "attack_regular_block") | (.data$output_type == "block_covered") ~ 1 - dplyr::lag(.data$epv_out, 1),
         (.data$output_type == "attack_covered_overpass") | (.data$output_type == "attack_covered" & dplyr::lead(.data$input_type, 2) == "cover_blocktouch") ~ dplyr::lead(.data$epv_in, 2),
-        .data$output_type == "block_into_dig_error" ~ dplyr::lead(.data$epv_in, 1),
-        is.na(.data$epv_out) & .data$team == dplyr::lag(.data$team) ~ dplyr::lag(.data$epv_out, 1),
-        is.na(.data$epv_out) & .data$team != dplyr::lag(.data$team) ~ 1 - dplyr::lag(.data$epv_out, 1),
+        #.data$output_type == "block_into_dig_error" ~ dplyr::lead(.data$epv_in, 1),
+        is.na(.data$epv_out) & .data$team == dplyr::lead(.data$team, 1) ~ dplyr::lead(.data$epv_in, 1),
+        is.na(.data$epv_out) & .data$team != dplyr::lead(.data$team, 1) ~ 1 - dplyr::lead(.data$epv_in, 1),
         TRUE ~ .data$epv_out
       )
     )
