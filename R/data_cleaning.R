@@ -4,11 +4,13 @@
 #'
 #' @importFrom datavolley read_dv
 #' @importFrom stringr str_detect
+#' @importFrom data.table rbindlist
 #'
 #' @param file_list a vector of file names with .dvw extensions
 #' @param verbose a logical indicating whether to print out the cumulative number of files imported
 #'
-#' @return a data frame containing the plays objects of each file in the set
+#' @return a data frame (data.table object) containing the plays objects of each file in the set.
+#' Making this a data.table object allows for much faster analysis with giant databases.
 #'
 #' @export
 
@@ -32,11 +34,15 @@ vepv_import_files <- function(file_list, verbose = TRUE){
     plays_data[[i]] <- x$plays
     if(verbose){
       if((i %% 5 == 0) | (i == n)){
-        cat(paste0(i, "/", n, " matches completed\n"))
+        cat(paste0(i, "/", n, " matches imported\n"))
       }
     }
   }
-  epv_data <- dplyr::bind_rows(plays_data)
+  #epv_data <- dplyr::bind_rows(plays_data)
+  epv_data <- data.table::rbindlist(plays_data)
+
+  # add gender - assume
+  #epv_data$gender <- fifelse(grepl("Men's", epv_data$team), "men", "women")
 
   return(epv_data)
 }
@@ -45,14 +51,26 @@ vepv_import_files <- function(file_list, verbose = TRUE){
 #'
 #' Removes the non-actions from a data frame containing plays objects
 #'
+#' @importFrom data.table as.data.table
+#'
 #' @param plays the data frame containing the plays
 #'
 #' @return a subset of the data frame containing only the touches
 
 vepv_remove_nonactions <- function(plays){
 
+  if(data.class(plays) != "data.table") plays <- data.table::as.data.table(plays)
+
   #remove non-action plays
-  plays_new <- subset(plays, substring(code, 2, 2)!="P" & substring(code, 2, 2)!="p"& substring(code, 2, 2)!="z" & substring(code, 2, 2)!="c" & substring(code, 2, 2)!="*" & substring(code, 2, 2)!="$")
+  #plays_new <- subset(plays, substring(code, 2, 2)!="P" & substring(code, 2, 2)!="p"& substring(code, 2, 2)!="z" & substring(code, 2, 2)!="c" & substring(code, 2, 2)!="*" & substring(code, 2, 2)!="$")
+
+  # data.table way
+  #condition <- !(data.table::`%chin%`(substring(plays$code, 2, 2), c("P", "p", "z", "c", "*", "$")))
+  #plays_new <- data.table::subset.data.table(plays, condition)
+
+  # This seems overly complicated - if there's a skill then the skill should be be listed in skill
+  condition <- !is.na(plays$skill)
+  plays_new <- subset(plays, condition)
 
   return(plays_new)
 }
@@ -65,16 +83,19 @@ vepv_remove_nonactions <- function(plays){
 #'
 #' @return the dataset with a new column `id_touch`
 
-
 vepv_add_touch_id <- function(plays){
 
-  return(data.frame(plays, id_touch = seq.int(nrow(plays))))
+  plays$id_touch <- seq.int(nrow(plays))
 
+  #return(data.frame(plays, id_touch = seq.int(nrow(plays))))
+  return(plays)
 }
 
 #' Add year
 #'
 #' Adds a column indicating the match year to a dataset of plays
+#'
+#' @importFrom data.table year
 #'
 #' @param plays the data frame containing the plays
 #'
@@ -82,14 +103,15 @@ vepv_add_touch_id <- function(plays){
 
 vepv_add_year <- function(plays){
 
-  return(data.frame(plays, year = as.numeric(format(plays$match_date, "%Y"))))
+  plays$year <- data.table::year(plays$match_date)
 
+#  return(data.frame(plays, year = as.numeric(format(plays$match_date, "%Y"))))
+  return(plays)
 }
 
-#' Adds a column indicating the match year to a dataset of plays
+#' Adds a column indicating the opposing team to a dataset of plays
 #'
-#' @importFrom rlang .data
-#' @importFrom dplyr mutate case_when
+#' @importFrom data.table fifelse
 #'
 #' @param plays the data frame containing the plays
 #'
@@ -98,16 +120,158 @@ vepv_add_year <- function(plays){
 
 vepv_add_opponent <- function(plays){
 
-  plays <- plays |> mutate(
-    opponent = dplyr::case_when(
-      .data$team == .data$home_team ~ .data$visiting_team,
-      .data$team == .data$visiting_team ~ .data$home_team,
-      TRUE ~ NA_character_
-    )
+  # plays_new <- plays |> dplyr::mutate(
+  #   opponent = dplyr::case_when(
+  #     .data$team == .data$home_team ~ .data$visiting_team,
+  #     .data$team == .data$visiting_team ~ .data$home_team,
+  #     TRUE ~ NA_character_
+  #   )
+  # )
+
+  # giant nested ifelses because tidyfast doesn't natively use data.table::fifelse!
+  plays_new <- plays[, opponent := data.table::fifelse(
+    # Step 1: if team == home_team, return visiting team
+    team == home_team, visiting_team,
+    # Step 2: if team == visiting_team, return home team
+    data.table::fifelse(
+      team == visiting_team, home_team, NA_character_
+    ),
+    na = NA_character_
   )
+  ]
+
+  return(plays_new)
+}
+
+#' Adds two columns indicating the team and opponent ratings to a dataset of plays
+#'
+#' @importFrom rlang .data
+#' @importFrom dplyr mutate case_when
+#' @importFrom data.table `%chin%`
+#'
+#' @param plays the data frame containing the plays
+#' @param ratings_df a data frame containing team ratings. If NULL, all teams will be given a rating of 0.
+#'
+#' @return the dataset with a new column `opponent`
+vepv_add_team_ratings <- function(plays, ratings_df = NULL){
+
+  if(is.character(ratings_df) & (ratings_df == "pablo" | ratings_df == "Pablo")){
+    ratings_df <- volleyepv::pablo[,c("team", "gender", "season", "ranking")]
+  }
+
+  if(is.data.frame(ratings_df)){
+
+    # Stopgap solution for now - assumes season is only played in one year, no "2022-23" nonsense
+    if(data.table::`%chin%`("season", names(ratings_df))){
+      #ratings_df <- ratings_df |> dplyr::rename(year = "season")
+      ratings_df <- data.table::setnames(ratings_df, old = "season", new = "year")
+    }
+
+    if(!(data.table::`%chin%`("year", names(ratings_df)))){ # if we don't have a year, assume it's the current year
+      if(data.table::`%chin%`("year", names(plays))){
+        ratings_df$year <- max(plays$year)
+      } else {
+        ratings_df$year <- data.table::year(Sys.Date()) # assume it's the current year
+      }
+
+    }
+    if(!(data.table::`%chin%`("gender", names(ratings_df)))){ # if we don't have a gender, assume it's whatever is in the plays dataset
+      if(length(unique(plays$gender)) == 1){
+        ratings_df$gender <- unique(plays$gender)
+      }
+    } else {
+      stop("The plays data contains both men's and women's games, but the ratings data does not specify which gender")
+    }
+
+    #team_plays_rename <- c(team_rating = "ranking", team_rating = "Ranking", team_rating = "Rating", team_rating = "rating")
+    #opponent_plays_rename <- c(opponent_rating = "ranking", opponent_rating = "Ranking", opponent_rating = "Rating", opponent_rating = "rating")
+
+
+    # plays_new <-    plays |> dplyr::left_join(
+    #   ratings_df, by = c("year", "gender", "team")
+    # ) |>
+    #   dplyr::rename(any_of(team_plays_rename))
+    # rename column to team_rating
+    #plays_new <- dplyr::rename(plays_new, tidyselect::any_of(team_plays_rename))
+
+    plays_column_names <- names(plays)
+
+    if(!all(data.table::`%chin%`(c("year", "gender","team"), plays_column_names))){
+      warning("Insufficient columns to merge on.")
+      return(plays)
+    }
+
+
+    rename_old <- c("ranking", "Ranking", "rating", "Rating")
+    team_rename <- rep("team_rating", length(rename_old))
+    opponent_rename <- rep("opponent_rating", length(rename_old))
+
+
+    plays_new <- merge(plays, ratings_df, by = c("year", "gender", "team"),
+                       all.x = TRUE, suffixes = c(".x", ".y"))
+    plays_new <- data.table::setnames(plays_new, old = rename_old, new = team_rename)
+
+    # if(any(stringr::str_detect(names(plays_new), ".x$"))){
+    #   # this means there is extra junk that got duplicated
+    #
+    #   plays <- dplyr::rename_with(
+    #     plays,
+    #     ~ stringr::str_remove(.x, ".x$"),
+    #     tidyselect::ends_with(".x") # revert to the correct name
+    #   ) |> dplyr::select(
+    #     !tidyselect::ends_with(".y") # remove the duplicated column
+    #   )
+    # }
+
+    if(any(stringr::str_detect(names(plays_new), ".x$"))){
+      curr_names <- names(plays_new)
+      fixed_names <- stringr::str_remove(names(plays_new), ".x$")
+      plays_new <- data.table::setnames(plays_new, old = curr_names, new = fixed_names)
+      duplicated_columns <- stringr::str_detect(names(plays_new), ".y$")
+      plays_new <- plays_new[,!duplicated_columns]
+    }
+
+
+
+    # Now we have to do it again with opponent ratings!
+
+    # plays <- plays |> dplyr::left_join(
+    #   ratings_df, by = c("year", "gender", "opponent" = "team") # opponent in plays df, team in ratings_df
+    # ) |>
+    #   dplyr::rename(any_of(opponent_plays_rename))
+    # # rename column to team_rating
+    #
+    # if(any(stringr::str_detect(names(plays), ".x$"))){
+    #   # this means there is extra junk that got duplicated again
+    #   # luckily we deleted the .x stuff the first time so there should only be two copies
+    #
+    #   plays <- dplyr::rename_with(
+    #     plays,
+    #     ~ stringr::str_remove(.x, ".x$"),
+    #     tidyselect::ends_with(".x") # revert to the correct name
+    #   ) |> dplyr::select(
+    #     !tidyselect::ends_with(".y") # remove the duplicated column
+    #   )
+    # }
+
+    plays_new <- merge(plays_new, ratings_df, by.x = c("year", "gender", "opponent"), by.y = c("year", "gender", "team"),
+                       all.x = TRUE, suffixes = c(".x", ".y"))
+    plays_new <- data.table::setnames(plays_new, old = rename_old, new = opponent_rename)
+
+
+  } else {
+    plays_new <- plays
+    plays_new$team_rating <- 0
+    plays_new$opponent_rating <- 0
+    # plays <- plays |> dplyr::mutate(
+    #   team_rating = 0,
+    #   opponent_rating = 0
+    # )
+  }
 
   return(plays)
 }
+
 
 #' Recode skills
 #'
@@ -144,7 +308,6 @@ vepv_recode_skills <- function(plays){
 #' @importFrom dplyr mutate select group_by if_else case_when lag n
 #'
 #' @return the dataset with new `skq` column for skill-quality combination
-
 
 vepv_add_possession_contacts <- function(plays){
 
