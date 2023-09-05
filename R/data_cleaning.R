@@ -85,7 +85,7 @@ vepv_remove_nonactions <- function(plays){
 
 vepv_add_touch_id <- function(plays){
 
-  plays$id_touch <- seq.int(nrow(plays))
+  plays[, id_touch := seq.int(nrow(plays))]
 
   #return(data.frame(plays, id_touch = seq.int(nrow(plays))))
   return(plays)
@@ -103,7 +103,8 @@ vepv_add_touch_id <- function(plays){
 
 vepv_add_year <- function(plays){
 
-  plays$year <- data.table::year(plays$match_date)
+  plays[, year := data.table::year(match_date)]
+  #plays$year <- data.table::year(plays$match_date)
 
 #  return(data.frame(plays, year = as.numeric(format(plays$match_date, "%Y"))))
   return(plays)
@@ -120,7 +121,7 @@ vepv_add_year <- function(plays){
 
 vepv_add_opponent <- function(plays){
 
-  # plays_new <- plays |> dplyr::mutate(
+  # plays <- plays |> dplyr::mutate(
   #   opponent = dplyr::case_when(
   #     .data$team == .data$home_team ~ .data$visiting_team,
   #     .data$team == .data$visiting_team ~ .data$home_team,
@@ -128,19 +129,17 @@ vepv_add_opponent <- function(plays){
   #   )
   # )
 
-  # giant nested ifelses because tidyfast doesn't natively use data.table::fifelse!
-  plays_new <- plays[, opponent := data.table::fifelse(
+  plays[, opponent := data.table::fcase(
     # Step 1: if team == home_team, return visiting team
     team == home_team, visiting_team,
     # Step 2: if team == visiting_team, return home team
-    data.table::fifelse(
-      team == visiting_team, home_team, NA_character_
-    ),
-    na = NA_character_
+    team == visiting_team, home_team,
+    # Step 3: if something weird is going on with team, return NA
+    default = NA_character_
   )
   ]
 
-  return(plays_new)
+  return(plays)
 }
 
 #' Adds two columns indicating the team and opponent ratings to a dataset of plays
@@ -170,19 +169,22 @@ vepv_add_team_ratings <- function(plays, ratings_df = NULL){
     if(!(data.table::`%chin%`("year", names(ratings_df)))){ # if we don't have a year, assume it's the current year
       if(data.table::`%chin%`("year", names(plays))){
         ratings_df$year <- max(plays$year)
-      } else {
-        ratings_df$year <- data.table::year(Sys.Date()) # assume it's the current year
+      } else { # no year in the ratings file either, assume it's the current year
+        ratings_df$year <- data.table::year(Sys.Date())
       }
 
     }
     if(!(data.table::`%chin%`("gender", names(ratings_df)))){ # if we don't have a gender, assume it's whatever is in the plays dataset
+      if(!(data.table::`%chin%`("gender", names(plays)))){
+        ratings_df$gender <- "unknown" # mark as unknown if neither plays nor ratings has a gender variable
+      } else {
       if(length(unique(plays$gender)) == 1){
         ratings_df$gender <- unique(plays$gender)
-      }
-    } else {
+      } else {
       stop("The plays data contains both men's and women's games, but the ratings data does not specify which gender")
+      }
+      }
     }
-
     #team_plays_rename <- c(team_rating = "ranking", team_rating = "Ranking", team_rating = "Rating", team_rating = "rating")
     #opponent_plays_rename <- c(opponent_rating = "ranking", opponent_rating = "Ranking", opponent_rating = "Rating", opponent_rating = "rating")
 
@@ -194,22 +196,22 @@ vepv_add_team_ratings <- function(plays, ratings_df = NULL){
     # rename column to team_rating
     #plays_new <- dplyr::rename(plays_new, tidyselect::any_of(team_plays_rename))
 
+    # we want to merge by year, gender, and team, but that may not be possible depending on what is missing from plays
     plays_column_names <- names(plays)
-
     if(!all(data.table::`%chin%`(c("year", "gender","team"), plays_column_names))){
-      warning("Insufficient columns to merge on.")
-      return(plays)
+      warning("One or more expected columns to merge on are missing")
+      #return(plays)
     }
-
+    merge_columns <- c("year", "gender", "team")[data.table::`%chin%`(c("year", "gender", "team"), plays_column_names)]
 
     rename_old <- c("ranking", "Ranking", "rating", "Rating")
     team_rename <- rep("team_rating", length(rename_old))
     opponent_rename <- rep("opponent_rating", length(rename_old))
 
 
-    plays_new <- merge(plays, ratings_df, by = c("year", "gender", "team"),
+    plays_new <- merge(plays, ratings_df, by = merge_columns,
                        all.x = TRUE, suffixes = c(".x", ".y"))
-    plays_new <- data.table::setnames(plays_new, old = rename_old, new = team_rename)
+    plays_new <- data.table::setnames(plays_new, old = rename_old, new = team_rename, skip_absent = TRUE)
 
     # if(any(stringr::str_detect(names(plays_new), ".x$"))){
     #   # this means there is extra junk that got duplicated
@@ -223,15 +225,13 @@ vepv_add_team_ratings <- function(plays, ratings_df = NULL){
     #   )
     # }
 
-    if(any(stringr::str_detect(names(plays_new), ".x$"))){
+    if(any(stringr::str_detect(names(plays_new), "\\.x$"))){
       curr_names <- names(plays_new)
-      fixed_names <- stringr::str_remove(names(plays_new), ".x$")
+      fixed_names <- stringr::str_remove(curr_names, "\\.x$")
       plays_new <- data.table::setnames(plays_new, old = curr_names, new = fixed_names)
-      duplicated_columns <- stringr::str_detect(names(plays_new), ".y$")
-      plays_new <- plays_new[,!duplicated_columns]
+      unique_columns <- !stringr::str_detect(curr_names, "\\.y$")
+      plays_new <- plays_new[,..unique_columns]
     }
-
-
 
     # Now we have to do it again with opponent ratings!
 
@@ -254,24 +254,34 @@ vepv_add_team_ratings <- function(plays, ratings_df = NULL){
     #   )
     # }
 
-    plays_new <- merge(plays_new, ratings_df, by.x = c("year", "gender", "opponent"), by.y = c("year", "gender", "team"),
-                       all.x = TRUE, suffixes = c(".x", ".y"))
-    plays_new <- data.table::setnames(plays_new, old = rename_old, new = opponent_rename)
+    merge_columns2 <- merge_columns
+    merge_columns2[merge_columns2 == "team"] <- "opponent"
 
+    plays_new <- merge(plays_new, ratings_df, by.x = merge_columns2, by.y = merge_columns,
+                       all.x = TRUE, suffixes = c(".x", ".y"))
+    plays_new <- data.table::setnames(plays_new, old = rename_old, new = opponent_rename, skip_absent = TRUE)
+
+    if(any(stringr::str_detect(names(plays_new), "\\.x$"))){
+      curr_names <- names(plays_new)
+      fixed_names <- stringr::str_remove(curr_names, "\\.x$")
+      plays_new <- data.table::setnames(plays_new, old = curr_names, new = fixed_names)
+      unique_columns <- !stringr::str_detect(curr_names, "\\.y$")
+      plays_new <- plays_new[,..unique_columns]
+    }
 
   } else {
+
     plays_new <- plays
-    plays_new$team_rating <- 0
-    plays_new$opponent_rating <- 0
+    plays_new[, c("team_rating", "opponent_rating") := 0]
+
     # plays <- plays |> dplyr::mutate(
     #   team_rating = 0,
     #   opponent_rating = 0
     # )
   }
 
-  return(plays)
+  return(plays_new)
 }
-
 
 #' Recode skills
 #'
@@ -279,18 +289,24 @@ vepv_add_team_ratings <- function(plays, ratings_df = NULL){
 #'
 #' @param plays the data frame containing the plays
 #'
-#' @importFrom rlang .data
-#' @importFrom dplyr if_else mutate lag
+#' @importFrom data.table shift fifelse
 #'
 #' @return the dataset with updated `evaluation_code` and `skill` columns and a new `skq` column for skill-quality combination
 
 vepv_recode_skills <- function(plays){
 
-  plays <- plays |> dplyr::mutate(
-    evaluation_code = dplyr::if_else(.data$skill=="Set" & .data$evaluation_code == "+", "#", .data$evaluation_code),
-    skill = dplyr::if_else(.data$skill=="Dig" & lag(.data$skill, 1)=="Block" & dplyr::lag(.data$team, 2)==.data$team, "Cover", .data$skill),
-    skq = paste(.data$skill, .data$evaluation_code, sep = " ")
-  )
+
+  plays[, `:=`(
+    evaluation_code = data.table::fifelse(skill == "Set" & evaluation_code == "+", "#", evaluation_code),
+    skill = data.table::fifelse(skill == "Dig" & data.table::shift(skill, 1) == "Block" & data.table::shift(team, 2) == team, "Cover", skill),
+    skq = paste(skill, evaluation_code, sep = " ")
+  )]
+
+  # plays <- plays |> dplyr::mutate(
+  #   evaluation_code = dplyr::if_else(.data$skill=="Set" & .data$evaluation_code == "+", "#", .data$evaluation_code),
+  #   skill = dplyr::if_else(.data$skill=="Dig" & lag(.data$skill, 1)=="Block" & dplyr::lag(.data$team, 2)==.data$team, "Cover", .data$skill),
+  #   skq = paste(.data$skill, .data$evaluation_code, sep = " ")
+  # )
 
   return(plays)
 }
@@ -311,26 +327,56 @@ vepv_recode_skills <- function(plays){
 
 vepv_add_possession_contacts <- function(plays){
 
-  output <- plays |> dplyr::group_by(match_id, point_id) |>  # grab match-points
-    dplyr::mutate(team_switch = (.data$team != dplyr::lag(.data$team) | is.na(dplyr::lag(.data$team))),  # find where the team changes
-           possession_start = dplyr::case_when(  # find touch where possession starts
-             is.na(.data$skill) ~ NA,  # if skill is NA then no touch
-             .data$skill == "Serve" ~ TRUE, # Serve is its own possession
-             .data$skq %in% c("Dig =", "Cover =", "Reception =", "Freeball =") ~ FALSE,
-             #.data$skill %in% c("Dig", "Cover", "Reception", "Freeball") & .data$evaluation_code == "=" ~ FALSE,
-             dplyr::lag(.data$skill, 1) == "Block" ~ TRUE,  # possession always changes after a block
-             .data$team_switch & .data$skill != "Block" ~ TRUE, # possession changes if new team touches unless it's a block
-             TRUE ~ FALSE  # if otherwise, it's not a possession-starting touch
-           ),
-           possession = cumsum(.data$possession_start & !is.na(.data$possession_start))  # counts possessions in the point; serve = 1, reception/first ball = 2
-    ) |> dplyr::group_by(match_id, point_id, possession) |>
-    dplyr::mutate(contact = seq(1, dplyr::n())
-    ) |> dplyr::ungroup() |>
-    dplyr::mutate(contact = dplyr::if_else(is.na(.data$skill), NA_integer_, .data$contact)) |>
-    dplyr::select(-team_switch, -possession_start)  # get rid of confusing team_switch variable
+  # We're going to do these steps one at a time
 
-  return(output)
+  # First add whether the team switches
+  plays[, `:=`(
+    team_switch = (team != data.table::shift(team, 1) | is.na(data.table::shift(team, 1)))
+  ), by = c("match_id", "point_id")]
 
+  # Next flag the start of possession
+  plays[, `:=`(
+    possession_start = data.table::fcase(
+      skill == "Serve" | data.table::shift(skill, 1) == "Block" | (team_switch & skill != "Block"), TRUE,
+      skq %in% c("Dig =", "Cover =", "Reception =", "Freeball =") | TRUE, FALSE,
+      default = NA
+    )
+  ), by = c("match_id", "point_id")]
+
+  # Next find the possessions within the point
+  plays[, `:=`(
+    possession = cumsum(possession_start & !is.na(possession_start))
+    ), by = c("match_id", "point_id")]
+
+  # Next find the touch number within the possession
+  plays[!is.na(skill), `:=`(
+    contact = cumsum(!is.na(skill)) # for NA skills
+  ), by = c("match_id", "point_id", "possession")]
+
+  # Remove team_switch and possession_start columns
+  plays[, c("team_switch", "possession_start") := NULL]
+
+
+  # output <- plays |> dplyr::group_by(match_id, point_id) |>  # grab match-points
+  #   dplyr::mutate(team_switch = (.data$team != dplyr::lag(.data$team) | is.na(dplyr::lag(.data$team))),  # find where the team changes
+  #          possession_start = dplyr::case_when(  # find touch where possession starts
+  #            is.na(.data$skill) ~ NA,  # if skill is NA then no touch
+  #            .data$skill == "Serve" ~ TRUE, # Serve is its own possession
+  #            .data$skq %in% c("Dig =", "Cover =", "Reception =", "Freeball =") ~ FALSE,
+  #            #.data$skill %in% c("Dig", "Cover", "Reception", "Freeball") & .data$evaluation_code == "=" ~ FALSE,
+  #            dplyr::lag(.data$skill, 1) == "Block" ~ TRUE,  # possession always changes after a block
+  #            .data$team_switch & .data$skill != "Block" ~ TRUE, # possession changes if new team touches unless it's a block
+  #            TRUE ~ FALSE  # if otherwise, it's not a possession-starting touch
+  #          ),
+  #          possession = cumsum(.data$possession_start & !is.na(.data$possession_start))  # counts possessions in the point; serve = 1, reception/first ball = 2
+  #   ) |> dplyr::group_by(match_id, point_id, possession) |>
+  #   dplyr::mutate(contact = seq(1, dplyr::n())
+  #   ) |> dplyr::ungroup() |>
+  #   dplyr::mutate(contact = dplyr::if_else(is.na(.data$skill), NA_integer_, .data$contact)) |>
+  #   dplyr::select(-team_switch, -possession_start)  # get rid of confusing team_switch variable
+
+  # return(output)
+  return(plays)
 }
 
 #' Add touch inputs and outputs
