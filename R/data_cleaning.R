@@ -694,7 +694,7 @@ vepv_touch_kcode <- function(plays){
 #' @param impute_probs a data frame containing three columns:
 #' types of blocks, probability of facing each type of block when the attack has a k-code and probability of facing each type of block when the attack does not have a k-code
 #'
-#' @importFrom dplyr mutate case_when lag lead
+#' @importFrom data.table fcase `%chin%` fifelse shift
 #'
 #' @return the same data frame with `input_type` and `output_type` columns
 #'
@@ -765,7 +765,7 @@ vepv_blockers <- function(plays, impute = TRUE, impute_seed = 100,
 #'
 #' @param plays the data frame containing the plays
 #'
-#' @importFrom dplyr mutate case_when lag if_else
+#' @importFrom data.table fcase fifelse shift `%chin%`
 #'
 #' @return the same data frame with `speed`, `block_touch`, and `reaction_time` columns. `speed` represents whether the previous attack was a hard spike or not,
 #' `block_touch` indicates whether the dig was directly off an attack or off a block-touch,
@@ -775,22 +775,36 @@ vepv_blockers <- function(plays, impute = TRUE, impute_seed = 100,
 
 vepv_dig_difficulty <- function(plays){
 
-  output <- plays |> dplyr::mutate(
-    speed = dplyr::case_when(
-      .data$skill %in% c("Dig", "Cover") & dplyr::lag(.data$skill, 1)=="Block" & dplyr::lag(.data$skill_subtype, 2) == "Hard spike" ~ "hard_spike",
-      .data$skill=="Dig" & dplyr::lag(.data$skill, 1)=="Attack" & dplyr::lag(.data$skill_subtype, 1) == "Hard spike" ~ "hard_spike",
-      .data$skill %in% c("Dig", "Cover")  ~ "not_hard_spike",
-      TRUE ~ NA_character_
+  plays[, `:=`(
+    speed = data.table::fcase(
+      data.table::`%chin%`(skill, c("Dig", "Cover")) & data.table::shift(skill, 1) == "Block" & data.table::shift(skill_subtype, 2) == "Hard spike", "hard_spike",
+      skill == "Dig" & data.table::shift(skill, 1) == "Attack" & data.table::shift(skill_subtype, 1) == "Hard spike", "hard_spike",
+      data.table::`%chin%`(skill, c("Dig", "Cover")), "not_hard_spike",
+      default = NA_character_
     ),
-    block_touch = dplyr::if_else(.data$skill %in% c("Dig", "Cover") & dplyr::lag(.data$skill, 1) == "Block" & dplyr::lag(.data$skill, 2) == "Attack", "yes", "no", missing = NA_character_),
-    reaction_time = dplyr::if_else(.data$skill %in% c("Dig", "Cover"), .data$video_time - dplyr::lag(.data$video_time), NA_real_)
-  )
+    block_touch = data.table::fifelse(data.table::`%chin%`(skill, c("Dig", "Cover")) & data.table::shift(skill, 1) == "Block" & data.table::shift(skill, 2) == "Attack", "yes", "no"),
+    reaction_time = data.table::fifelse(data.table::`%chin%`(skill, c("Dig", "Cover")), video_time - data.table::shift(video_time, 1), NA_real_)
+  )]
 
-  output <- output |> dplyr::mutate(
-    reaction_time = dplyr::if_else(.data$reaction_time > 2, 2, .data$reaction_time, missing = NA_real_)
-  )
+  plays[reaction_time >2, reaction_time := 2]
 
-  return(output)
+  # output <- plays |> dplyr::mutate(
+  #   speed = dplyr::case_when(
+  #     .data$skill %in% c("Dig", "Cover") & dplyr::lag(.data$skill, 1)=="Block" & dplyr::lag(.data$skill_subtype, 2) == "Hard spike" ~ "hard_spike",
+  #     .data$skill=="Dig" & dplyr::lag(.data$skill, 1)=="Attack" & dplyr::lag(.data$skill_subtype, 1) == "Hard spike" ~ "hard_spike",
+  #     .data$skill %in% c("Dig", "Cover")  ~ "not_hard_spike",
+  #     TRUE ~ NA_character_
+  #   ),
+  #   block_touch = dplyr::if_else(.data$skill %in% c("Dig", "Cover") & dplyr::lag(.data$skill, 1) == "Block" & dplyr::lag(.data$skill, 2) == "Attack", "yes", "no", missing = NA_character_),
+  #   reaction_time = dplyr::if_else(.data$skill %in% c("Dig", "Cover"), .data$video_time - dplyr::lag(.data$video_time), NA_real_)
+  # )
+  #
+  # output <- output |> dplyr::mutate(
+  #   reaction_time = dplyr::if_else(.data$reaction_time > 2, 2, .data$reaction_time, missing = NA_real_)
+  # )
+
+  # return(output)
+  return(plays)
 }
 
 #' Add rally winner
