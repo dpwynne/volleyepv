@@ -79,11 +79,15 @@ vepv_remove_nonactions <- function(plays){
 #'
 #' Adds a column indicating the row number in the original dataset of plays
 #'
+#' @importFrom data.table as.data.table
+#'
 #' @param plays the data frame containing the plays
 #'
 #' @return the dataset with a new column `id_touch`
 
 vepv_add_touch_id <- function(plays){
+
+  if(data.class(plays) != "data.table") plays <- data.table::as.data.table(plays)
 
   plays[, id_touch := seq.int(nrow(plays))]
 
@@ -95,13 +99,15 @@ vepv_add_touch_id <- function(plays){
 #'
 #' Adds a column indicating the match year to a dataset of plays
 #'
-#' @importFrom data.table year
+#' @importFrom data.table year as.data.table
 #'
 #' @param plays the data frame containing the plays
 #'
 #' @return the dataset with a new column `year`
 
 vepv_add_year <- function(plays){
+
+  if(data.class(plays) != "data.table") plays <- data.table::as.data.table(plays)
 
   plays[, year := data.table::year(match_date)]
   #plays$year <- data.table::year(plays$match_date)
@@ -112,7 +118,7 @@ vepv_add_year <- function(plays){
 
 #' Adds a column indicating the opposing team to a dataset of plays
 #'
-#' @importFrom data.table fcase
+#' @importFrom data.table fcase as.data.table
 #'
 #' @param plays the data frame containing the plays
 #'
@@ -120,6 +126,9 @@ vepv_add_year <- function(plays){
 #' @return the dataset with a new column `opponent`
 
 vepv_add_opponent <- function(plays){
+
+  if(data.class(plays) != "data.table") plays <- data.table::as.data.table(plays)
+
 
   # plays <- plays |> dplyr::mutate(
   #   opponent = dplyr::case_when(
@@ -144,7 +153,7 @@ vepv_add_opponent <- function(plays){
 
 #' Adds two columns indicating the team and opponent ratings to a dataset of plays
 #'
-#' @importFrom data.table `%chin%` setnames
+#' @importFrom data.table `%chin%` setnames as.data.table
 #' @importFrom stringr str_detect str_remove
 #'
 #' @param plays the data frame containing the plays
@@ -152,6 +161,8 @@ vepv_add_opponent <- function(plays){
 #'
 #' @return the dataset with a new column `opponent`
 vepv_add_team_ratings <- function(plays, ratings_df = NULL){
+
+  if(data.class(plays) != "data.table") plays <- data.table::as.data.table(plays)
 
   if(is.character(ratings_df) & (ratings_df == "pablo" | ratings_df == "Pablo")){
     ratings_df <- volleyepv::pablo[,c("team", "gender", "season", "ranking")]
@@ -288,11 +299,13 @@ vepv_add_team_ratings <- function(plays, ratings_df = NULL){
 #'
 #' @param plays the data frame containing the plays
 #'
-#' @importFrom data.table shift fifelse
+#' @importFrom data.table shift fifelse as.data.table
 #'
 #' @return the dataset with updated `evaluation_code` and `skill` columns and a new `skq` column for skill-quality combination
 
 vepv_recode_skills <- function(plays){
+
+  if(data.class(plays) != "data.table") plays <- data.table::as.data.table(plays)
 
   plays[, `:=`(
     evaluation_code = data.table::fifelse(skill == "Set" & evaluation_code == "+", "#", evaluation_code),
@@ -318,11 +331,13 @@ vepv_recode_skills <- function(plays){
 #'
 #' @param plays the data frame containing the plays
 #'
-#' @importFrom data.table shift fcase
+#' @importFrom data.table shift fcase as.data.table
 #'
 #' @return the dataset with new `skq` column for skill-quality combination
 
 vepv_add_possession_contacts <- function(plays){
+
+  if(data.class(plays) != "data.table") plays <- data.table::as.data.table(plays)
 
   # We're going to do these steps one at a time
 
@@ -383,13 +398,15 @@ vepv_add_possession_contacts <- function(plays){
 #'
 #' @param plays the data frame containing the plays
 #'
-#' @importFrom dplyr mutate case_when lag lead
+#' @importFrom data.table fcase shift fifelse as.data.table
 #'
 #' @return the same data frame with `input_type` and `output_type` columns
 #'
 #' @export
 
 vepv_touch_input_output <- function(plays){
+
+  if(data.class(plays) != "data.table") plays <- data.table::as.data.table(plays)
 
   # Giant fcases
   plays[, `:=` (
@@ -540,13 +557,15 @@ vepv_touch_input_output <- function(plays){
 #'
 #' @param plays the data frame containing the plays
 #'
-#' @importFrom dplyr mutate case_when lag lead if_else
+#' @importFrom data.table fcase shift `%chin%`
 #'
 #' @return the same data frame with `input_coord_x`, `input_coord_y`, `output_coord_x`, and `output_coord_y` columns
 #'
 #' @export
 
 vepv_touch_coordinates <- function(plays){
+
+  if(data.class(plays) != "data.table") plays <- data.table::as.data.table(plays)
 
   plays[,`:=`(
     input_coord_x = data.table::fcase(
@@ -607,7 +626,7 @@ vepv_touch_coordinates <- function(plays){
   # )
 
 
-  plays[input_type == "set_regular",c("output_coord_x", "output_coord_y") := .(input_coord_x, input_coord_y)]
+  plays[input_type == "set_regular", c("output_coord_x", "output_coord_y") := .(input_coord_x, input_coord_y)]
 
   # output <- output |> dplyr::mutate(
   #   output_coord_x = dplyr::if_else(.data$input_type == "set_regular", .data$input_coord_x, .data$output_coord_x),
@@ -624,13 +643,15 @@ vepv_touch_coordinates <- function(plays){
 #'
 #' @param plays the data frame containing the plays
 #'
-#' @importFrom data.table fifelse `%chin%` shift fcase
+#' @importFrom data.table fifelse `%chin%` shift fcase as.data.table
 #'
 #' @return the same data frame with `input_kcode` and `output_kcode` columns
 #'
 #' @export
 
 vepv_touch_kcode <- function(plays){
+
+  if(data.class(plays) != "data.table") plays <- data.table::as.data.table(plays)
 
   plays[, `:=`(
     kcode = data.table::fifelse((data.table::`%chin%`(skill, c("Reception", "Dig", "Cover", "Freeball")) & !is.na(data.table::shift(set_code, -1))) | (skill == "Set" & !is.na(set_code)), "yes", "no")
@@ -694,7 +715,7 @@ vepv_touch_kcode <- function(plays){
 #' @param impute_probs a data frame containing three columns:
 #' types of blocks, probability of facing each type of block when the attack has a k-code and probability of facing each type of block when the attack does not have a k-code
 #'
-#' @importFrom data.table fcase `%chin%` fifelse shift
+#' @importFrom data.table fcase `%chin%` fifelse shift as.data.table
 #'
 #' @return the same data frame with `input_type` and `output_type` columns
 #'
@@ -702,6 +723,8 @@ vepv_touch_kcode <- function(plays){
 
 vepv_blockers <- function(plays, impute = TRUE, impute_seed = 100,
                           impute_probs = data.frame(types = c("double", "solo", "triple", "seam", "none"), yes = c(0.48,0.23,0.224,0.016,0.007), no = c(0.724,0.097,0.063,0.075,0.012))){
+
+  if(data.class(plays) != "data.table") plays <- data.table::as.data.table(plays)
 
   plays[, `:=`(
     blockers = data.table::fcase(
@@ -758,14 +781,13 @@ vepv_blockers <- function(plays, impute = TRUE, impute_seed = 100,
   return(plays)
 }
 
-
 #' Add dig difficulty
 #'
 #' Adds variables related to the difficulty of the dig
 #'
 #' @param plays the data frame containing the plays
 #'
-#' @importFrom data.table fcase fifelse shift `%chin%`
+#' @importFrom data.table fcase fifelse shift `%chin%` as.data.table
 #'
 #' @return the same data frame with `speed`, `block_touch`, and `reaction_time` columns. `speed` represents whether the previous attack was a hard spike or not,
 #' `block_touch` indicates whether the dig was directly off an attack or off a block-touch,
@@ -774,6 +796,8 @@ vepv_blockers <- function(plays, impute = TRUE, impute_seed = 100,
 #' @export
 
 vepv_dig_difficulty <- function(plays){
+
+  if(data.class(plays) != "data.table") plays <- data.table::as.data.table(plays)
 
   plays[, `:=`(
     speed = data.table::fcase(
@@ -813,7 +837,7 @@ vepv_dig_difficulty <- function(plays){
 #'
 #' @param plays the data frame containing the plays
 #'
-#' @importFrom dplyr mutate case_when if_else
+#' @importFrom data.table fifelse as.data.table
 #'
 #' @return the same data frame with `rally_winner` and `rally_eff` columns. `rally_winner` indicates whether the touching team won the point (1) or not (0),
 #' and `rally_eff` converts this to an efficiency (1 or -1)
@@ -822,15 +846,31 @@ vepv_dig_difficulty <- function(plays){
 
 vepv_add_rally_winner <- function(plays){
 
-  output <- plays |> dplyr::mutate(
-    rally_winner = dplyr::if_else(.data$team == .data$point_won_by, 1, 0),
-    rally_eff = dplyr::case_when(
-      .data$team == .data$point_won_by ~ 1,
-      .data$team != .data$point_won_by ~ -1,
-      TRUE ~ 0
-    )
-  )
+  if(data.class(plays) != "data.table") plays <- data.table::as.data.table(plays)
 
-  return(output)
+  plays[, `:=`(
+    rally_winner = data.table::fifelse(team == point_won_by, 1, 0)
+  )]
+
+  plays[, `:=`(
+    rally_eff = 2 * rally_winner - 1
+  )]
+
+
+  plays[is.na(team) | is.na(point_won_by), `:=`(
+    rally_winner = NA_real_,
+    rally_eff = 0
+  )]
+
+  # output <- plays |> dplyr::mutate(
+  #   rally_winner = dplyr::if_else(.data$team == .data$point_won_by, 1, 0),
+  #   rally_eff = dplyr::case_when(
+  #     .data$team == .data$point_won_by ~ 1,
+  #     .data$team != .data$point_won_by ~ -1,
+  #     TRUE ~ 0
+  #   )
+  # )
+
+  # return(output)
+  return(plays)
 }
-
