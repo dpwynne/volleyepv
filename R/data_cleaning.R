@@ -624,7 +624,7 @@ vepv_touch_coordinates <- function(plays){
 #'
 #' @param plays the data frame containing the plays
 #'
-#' @importFrom dplyr mutate case_when lag lead if_else
+#' @importFrom data.table fifelse `%chin%` shift fcase
 #'
 #' @return the same data frame with `input_kcode` and `output_kcode` columns
 #'
@@ -632,39 +632,61 @@ vepv_touch_coordinates <- function(plays){
 
 vepv_touch_kcode <- function(plays){
 
-  output <- plays |> dplyr::mutate(
-    kcode = dplyr::if_else((.data$skill %in% c("Reception", "Dig", "Cover", "Freeball") & !is.na(dplyr::lead(.data$set_code, 1))) | (.data$skill == "Set" & !is.na(.data$set_code)), "yes", "no")
-  )
+  plays[, `:=`(
+    kcode = data.table::fifelse((data.table::`%chin%`(skill, c("Reception", "Dig", "Cover", "Freeball")) & !is.na(data.table::shift(set_code, -1))) | (skill == "Set" & !is.na(set_code)), "yes", "no")
+  )]
 
-  output <- output |> dplyr::mutate(
-    input_kcode = dplyr::case_when(
-      .data$input_type == "set_regular" ~ .data$kcode,
-      .data$input_type == "attack_regular" ~ dplyr::lag(.data$kcode, 1),
-      .data$input_type == "block_regular" ~ dplyr::lag(.data$kcode, 2),
-      TRUE ~ "no" # if any other type then there shouldn't be a kcode for the input
+  # output <- plays |> dplyr::mutate(
+  #   kcode = dplyr::if_else((.data$skill %in% c("Reception", "Dig", "Cover", "Freeball") & !is.na(dplyr::lead(.data$set_code, 1))) | (.data$skill == "Set" & !is.na(.data$set_code)), "yes", "no")
+  # )
+
+  plays[, `:=`(
+    input_kcode = data.table::fcase(
+      input_type == "set_regular", kcode,
+      input_type == "attack_regular", data.table::shift(kcode, 1),
+      input_type == "block_regular", data.table::shift(kcode, 2),
+      default = "no"
     ),
-    output_kcode = dplyr::case_when(
-      .data$output_type %in% c("reception_regular", "dig_regular", "freeball_regular") ~ dplyr::lead(.data$kcode, 1),
-      .data$output_type %in% c("serve_regular", "reception_overpass_non_attack", "attack_covered", "attack_regular", "attack_incorrect_tagging", "block_covered", "block_regular", "dig_overpass_non_attack", "freeball_overpass_non_attack") ~ dplyr::lead(.data$kcode, 2),
-      .data$output_type %in% c("serve_overpass_non_attack", "attack_regular_block", "attack_into_overpass_non_attack") ~ dplyr::lead(.data$kcode, 3),
-      .data$output_type %in% c("attack_block_overpass_into_non_attack") ~ dplyr::lead(.data$kcode, 4),
-      TRUE ~ "no" # if any other type then there shouldn't be a kcode for the output
+    output_kcode = data.table::fcase(
+      data.table::`%chin%`(output_type, c("reception_regular", "dig_regular", "freeball_regular")), data.table::shift(kcode, -1),
+      data.table::`%chin%`(output_type, c("serve_regular", "reception_overpass_non_attack", "attack_covered", "attack_regular", "attack_incorrect_tagging", "block_covered", "block_regular", "dig_overpass_non_attack", "freeball_overpass_non_attack")), data.table::shift(kcode, -2),
+      data.table::`%chin%`(output_type, c("serve_overpass_non_attack", "attack_regular_block", "attack_into_overpass_non_attack")), data.table::shift(kcode, -3),
+      output_type == "attack_block_overpass_into_non_attack", data.table::shift(kcode, -4),
+      default = "no"
     )
-  )
+  )]
 
-  output <- output |> dplyr::mutate(
-    output_kcode = dplyr::if_else(.data$input_type == "set_regular", .data$input_kcode, .data$output_kcode)
-  )
+  # for set_regular, set input and output kcodes to be equal
+  plays[input_type == "set_regular", output_kcode := input_kcode]
 
-  return(output)
+  # output <- output |> dplyr::mutate(
+  #   input_kcode = dplyr::case_when(
+  #     .data$input_type == "set_regular" ~ .data$kcode,
+  #     .data$input_type == "attack_regular" ~ dplyr::lag(.data$kcode, 1),
+  #     .data$input_type == "block_regular" ~ dplyr::lag(.data$kcode, 2),
+  #     TRUE ~ "no" # if any other type then there shouldn't be a kcode for the input
+  #   ),
+  #   output_kcode = dplyr::case_when(
+  #     .data$output_type %in% c("reception_regular", "dig_regular", "freeball_regular") ~ dplyr::lead(.data$kcode, 1),
+  #     .data$output_type %in% c("serve_regular", "reception_overpass_non_attack", "attack_covered", "attack_regular", "attack_incorrect_tagging", "block_covered", "block_regular", "dig_overpass_non_attack", "freeball_overpass_non_attack") ~ dplyr::lead(.data$kcode, 2),
+  #     .data$output_type %in% c("serve_overpass_non_attack", "attack_regular_block", "attack_into_overpass_non_attack") ~ dplyr::lead(.data$kcode, 3),
+  #     .data$output_type %in% c("attack_block_overpass_into_non_attack") ~ dplyr::lead(.data$kcode, 4),
+  #     TRUE ~ "no" # if any other type then there shouldn't be a kcode for the output
+  #   )
+  # )
 
+  # output <- output |> dplyr::mutate(
+  #   output_kcode = dplyr::if_else(.data$input_type == "set_regular", .data$input_kcode, .data$output_kcode)
+  # )
+
+  # return(output)
+  return(plays)
 }
 
 
 #' Add number of blockers
 #'
 #' Adds the number of blockers
-#'
 #'
 #' @param plays the data frame containing the plays
 #' @param impute a logical variable indicating whether to impute (TRUE) or not (FALSE) a value for the number of blockers when it is missing
@@ -681,34 +703,59 @@ vepv_touch_kcode <- function(plays){
 vepv_blockers <- function(plays, impute = TRUE, impute_seed = 100,
                           impute_probs = data.frame(types = c("double", "solo", "triple", "seam", "none"), yes = c(0.48,0.23,0.224,0.016,0.007), no = c(0.724,0.097,0.063,0.075,0.012))){
 
-  output <- plays |> dplyr::mutate(
-    blockers = dplyr::case_when(
-      .data$num_players %in% c("1 player block", "Unexpected +") ~ "solo",
-      .data$num_players == "2 player block" ~ "double",
-      .data$num_players == "3 player block" ~ "triple",
-      .data$num_players == "Hole block" ~ "seam",
-      .data$num_players == "No block" ~ "none",
-      TRUE ~ NA_character_
+  plays[, `:=`(
+    blockers = data.table::fcase(
+      data.table::`%chin%`(num_players, c("1 player block", "Unexpected +")), "solo",
+      num_players == "2 player block", "double",
+      num_players == "3 player block", "triple",
+      num_players == "Hole block", "seam",
+      num_players == "No block", "none",
+      default = NA_character_
     )
-  )
+  )]
+
+  # output <- plays |> dplyr::mutate(
+  #   blockers = dplyr::case_when(
+  #     .data$num_players %in% c("1 player block", "Unexpected +") ~ "solo",
+  #     .data$num_players == "2 player block" ~ "double",
+  #     .data$num_players == "3 player block" ~ "triple",
+  #     .data$num_players == "Hole block" ~ "seam",
+  #     .data$num_players == "No block" ~ "none",
+  #     TRUE ~ NA_character_
+  #   )
+  # )
 
   set.seed(impute_seed) # for reproducibility of imputation
 
-  n <- nrow(output)
+  plays2[, `:=`(
+    blockers = data.table::fifelse(
+      skq == "Set #" & data.table::shift(skill, -1) == "Attack", data.table::shift(blockers, -1), blockers
+      )
+    )]
 
-  output <- output |> dplyr::mutate(
-    blockers = dplyr::case_when(
-      .data$skq == "Set #" & dplyr::lead(.data$skill, 1) == "Attack" ~ dplyr::lead(.data$blockers, 1),
-      .data$skq == "Set #" & is.na(.data$blockers) & .data$input_kcode == "yes" & impute ~ sample(impute_probs[,1], size = n, replace = TRUE, prob = impute_probs[,2]),
-      .data$skq == "Set #" & is.na(.data$blockers) & .data$input_kcode == "yes" ~ "unknown",
-      .data$skq == "Set #" & is.na(.data$blockers) & .data$input_kcode == "no" & impute ~ sample(impute_probs[,1], size = n, replace = TRUE, prob = impute_probs[,3]),
-      .data$skq == "Set #" & is.na(.data$blockers) & .data$input_kcode == "no" ~ "unknown",
-      TRUE ~ .data$blockers
+  plays[skq == "Set #" & is.na(blockers), `:=`(
+    blockers = data.table::fcase(
+      input_kcode == "yes" & impute, sample(impute_probs[,1], size = .N, replace = TRUE, prob = impute_probs[,2]),
+      input_kcode == "no" & impute, sample(impute_probs[,1], size = .N, replace = TRUE, prob = impute_probs[,3]),
+      default = "unknown"
     )
-  )
+  )]
 
-  return(output)
+  # n <- nrow(output)
+  #
+  # output <- output |> dplyr::mutate(
+  #   blockers = dplyr::case_when(
+  #     .data$skq == "Set #" & dplyr::lead(.data$skill, 1) == "Attack" ~ dplyr::lead(.data$blockers, 1),
+  #     .data$skq == "Set #" & is.na(.data$blockers) & .data$input_kcode == "yes" & impute ~ sample(impute_probs[,1], size = n, replace = TRUE, prob = impute_probs[,2]),
+  #     .data$skq == "Set #" & is.na(.data$blockers) & .data$input_kcode == "yes" ~ "unknown",
+  #     .data$skq == "Set #" & is.na(.data$blockers) & .data$input_kcode == "no" & impute ~ sample(impute_probs[,1], size = n, replace = TRUE, prob = impute_probs[,3]),
+  #     .data$skq == "Set #" & is.na(.data$blockers) & .data$input_kcode == "no" ~ "unknown",
+  #     TRUE ~ .data$blockers
+  #   )
+  # )
 
+  # return(output)
+  return(plays)
 }
 
 
