@@ -112,7 +112,7 @@ vepv_add_year <- function(plays){
 
 #' Adds a column indicating the opposing team to a dataset of plays
 #'
-#' @importFrom data.table fifelse
+#' @importFrom data.table fcase
 #'
 #' @param plays the data frame containing the plays
 #'
@@ -144,9 +144,8 @@ vepv_add_opponent <- function(plays){
 
 #' Adds two columns indicating the team and opponent ratings to a dataset of plays
 #'
-#' @importFrom rlang .data
-#' @importFrom dplyr mutate case_when
-#' @importFrom data.table `%chin%`
+#' @importFrom data.table `%chin%` setnames
+#' @importFrom stringr str_detect str_remove
 #'
 #' @param plays the data frame containing the plays
 #' @param ratings_df a data frame containing team ratings. If NULL, all teams will be given a rating of 0.
@@ -295,7 +294,6 @@ vepv_add_team_ratings <- function(plays, ratings_df = NULL){
 
 vepv_recode_skills <- function(plays){
 
-
   plays[, `:=`(
     evaluation_code = data.table::fifelse(skill == "Set" & evaluation_code == "+", "#", evaluation_code),
     skill = data.table::fifelse(skill == "Dig" & data.table::shift(skill, 1) == "Block" & data.table::shift(team, 2) == team, "Cover", skill),
@@ -320,8 +318,7 @@ vepv_recode_skills <- function(plays){
 #'
 #' @param plays the data frame containing the plays
 #'
-#' @importFrom rlang .data
-#' @importFrom dplyr mutate select group_by if_else case_when lag n
+#' @importFrom data.table shift fcase
 #'
 #' @return the dataset with new `skq` column for skill-quality combination
 
@@ -394,78 +391,147 @@ vepv_add_possession_contacts <- function(plays){
 
 vepv_touch_input_output <- function(plays){
 
-  output <-  plays |> dplyr::mutate(
-    input_type = dplyr::case_when(
-      .data$skill == "Serve" ~ "serve_baseline",
-      .data$skill == "Reception" ~ "reception_baseline",
-      .data$skill == "Set" ~ "set_regular",
-      .data$skill == "Attack" & dplyr::lag(.data$team, 1) != .data$team ~ "attack_overpass",
-      .data$skill == "Attack" & dplyr::lag(.data$team, 1) == .data$team & dplyr::lag(.data$skill != "Set") ~ "attack_weird", # attack on two
-      .data$skill == "Attack" & dplyr::lag(.data$team, 1) == .data$team & dplyr::lag(.data$skq == "Set -") ~ "attack_poor_set",
-      .data$skill == "Attack" & dplyr::lag(.data$team, 1) == .data$team & dplyr::lag(.data$skill, 1) == "Set"  ~ "attack_regular",
-      .data$skill == "Block" & dplyr::lag(.data$team, 2) == .data$team & dplyr::lag(.data$team, 1) != .data$team & dplyr::lag(.data$skill, 1) == "Attack" ~ "block_overpass",
-      .data$skill == "Block" & dplyr::lag(.data$team, 1) != .data$team & dplyr::lag(.data$skill, 1) != "Attack" ~ "block_weird",
-      .data$skill == "Block" & dplyr::lag(.data$team, 1) != .data$team & dplyr::lag(.data$skill, 1) == "Attack" ~ "block_regular",
-      .data$skill == "Dig" & dplyr::lag(.data$team, 1) != .data$team & dplyr::lag(.data$skill, 1) == "Attack" & dplyr::lag(.data$team, 2) == .data$team ~ "dig_overpass",
-      .data$skill == "Dig" & dplyr::lag(.data$team, 1) == .data$team & dplyr::lag(.data$skill, 1) == "Block" ~ "dig_blocktouch",
-      .data$skill == "Cover" & dplyr::lag(.data$team) != .data$team & dplyr::lag(.data$skill) == "Block" ~ "cover_blocktouch",
-      .data$skill == "Dig" & dplyr::lag(.data$skill) != "Block" & dplyr::lag(.data$skill) != "Attack" ~ "dig_weird",
-      .data$skill == "Dig" & dplyr::lag(.data$team) != .data$team & dplyr::lag(.data$skill) == "Attack" & dplyr::lag(.data$team, 2) != .data$team ~ "dig_regular",
-      .data$skill == "Freeball" ~ "freeball_baseline",
-      TRUE ~ NA_character_
+  # Giant fcases
+  plays[, `:=` (
+    input_type = data.table::fcase(
+      skill == "Serve", "serve_baseline",
+      skill == "Reception", "reception_baseline",
+      skill == "Set", "set_regular",
+      skill == "Attack" & team != data.table::shift(team, 1), "attack_overpass",
+      skill == "Attack" & team == data.table::shift(team, 1) & data.table::shift(skill, 1) != "Set", "attack_weird",
+      skill == "Attack" & team == data.table::shift(team, 1) & data.table::shift(skq, 1) == "Set -", "attack_poor_set",
+      skill == "Attack" & team == data.table::shift(team, 1) & data.table::shift(skill, 1) == "Set", "attack_regular",
+      skill == "Block" & team == data.table::shift(team, 2) & team != data.table::shift(team, 1) & data.table::shift(skill, 1) == "Attack", "block_overpass",
+      skill == "Block" & team != data.table::shift(team, 1) & data.table::shift(skill, 1) != "Attack", "block_weird",
+      skill == "Block" & team != data.table::shift(team, 1) & data.table::shift(skill, 1) == "Attack", "block_regular",
+      skill == "Dig" & team != data.table::shift(team, 1) & data.table::shift(skill, 1) == "Attack" & team == data.table::shift(team, 2), "dig_overpass",
+      skill == "Dig" & team == data.table::shift(team, 1) & data.table::shift(skill, 1) == "Block", "dig_blocktouch",
+      skill == "Cover" & team != data.table::shift(team, 1) & data.table::shift(skill, 1) == "Block", "cover_blocktouch",
+      skill == "Dig" & data.table::shift(skill, 1) != "Block" & data.table::shift(skill, 1) != "Attack", "dig_weird",
+      skill == "Dig" & team != data.table::shift(team, 1) & data.table::shift(skill, 1) == "Attack" & team != data.table::shift(team, 2), "dig_regular",
+      skill == "Freeball", "freeball_baseline",
+      default = NA_character_
     ),
-    output_type = dplyr::case_when(
-      .data$skq == "Serve #" ~ "serve_ace",
-      .data$skq == "Serve =" ~ "serve_error",
-      .data$skill == "Serve" & dplyr::lead(.data$team, 2) == .data$team & dplyr::lead(.data$skill, 2) == "Attack" ~ "serve_overpass_attack",
-      .data$skill == "Serve" & dplyr::lead(.data$team, 2) == .data$team & dplyr::lead(.data$skill, 2) != "Attack" ~ "serve_overpass_non_attack",
-      .data$skill == "Serve"  ~ "serve_regular",
-      .data$skq == "Reception =" ~ "reception_error",
-      .data$skill == "Reception" & dplyr::lead(.data$team, 1) != .data$team & dplyr::lead(.data$skill, 1) == "Attack" ~ "reception_overpass_attack",
-      .data$skill == "Reception" & dplyr::lead(.data$team, 1) != .data$team & dplyr::lead(.data$skill, 1) != "Attack" ~ "reception_overpass_non_attack",
-      .data$skill == "Reception" ~ "reception_regular",
-      .data$skq == "Set =" ~ "set_error",
-      .data$skq == "Set -" ~ "set_poor",
-      .data$skill == "Set" ~ "set_regular",
-      .data$skq == "Attack #" ~ "attack_kill",
-      .data$skq == "Attack =" ~ "attack_error",
-      .data$skq == "Attack /" ~ "attack_blocked",
-      .data$skq == "Attack" & dplyr::lead(.data$skill, 1) == "Block" & dplyr::lead(.data$team, 2) == .data$team & dplyr::lead(.data$team, 3) != .data$team ~ "attack_covered_overpass",
-      .data$skq == "Attack" & dplyr::lead(.data$skill, 1) == "Block" & dplyr::lead(.data$team, 2) == .data$team ~ "attack_covered",
-      .data$skill == "Attack" & dplyr::lead(.data$skill, 1) == "Block" & dplyr::lead(.data$team, 2) != .data$team & dplyr::lead(.data$team, 3) == .data$team & dplyr::lead(.data$skill, 3) == "Attack" ~ "attack_block_into_overpass_attack",
-      .data$skill == "Attack" & dplyr::lead(.data$skill, 1) == "Block" & dplyr::lead(.data$team, 2) != .data$team & dplyr::lead(.data$team, 3) == .data$team & dplyr::lead(.data$skill, 3) != "Attack" ~ "attack_block_into_overpass_non_attack",
-      .data$skill == "Attack" & dplyr::lead(.data$skill, 1) == "Block" ~ "attack_block_regular",
-      .data$skill == "Attack" & dplyr::lead(.data$team, 2) == .data$team & dplyr::lead(.data$team) != .data$team & dplyr::lead(.data$skill, 2) == "Attack" ~ "attack_into_overpass_attack",
-      .data$skill == "Attack" & dplyr::lead(.data$team, 2) == .data$team & dplyr::lead(.data$team) != .data$team & dplyr::lead(.data$skill, 2) != "Attack" ~ "attack_into_overpass_non_attack",
-      .data$skill == "Attack" & dplyr::lead(.data$team, 1) == .data$team & dplyr::lead(.data$point_id, 1) == .data$point_id ~ "attack_incorrect_tagging",
-      .data$skill == "Attack" ~ "attack_regular",
-      .data$skq == "Block #" ~ "block_stuff",
-      .data$skq == "Block =" ~ "block_out",
-      .data$skq == "Block !" ~ "block_into_dig_error",
-      .data$skill == "Block" & dplyr::lead(.data$team, 1) != .data$team ~ "block_covered",
-      .data$skill == "Block" ~ "block_regular",
-      .data$skq == "Dig =" ~ "dig_error",
-      .data$skill == "Dig" & dplyr::lead(.data$team, 1) != .data$team & dplyr::lead(.data$skill, 1) == "Attack" ~ "dig_overpass_attack",
-      .data$skill == "Dig" & dplyr::lead(.data$team, 1) != .data$team & dplyr::lead(.data$skill, 1) != "Attack" ~ "dig_overpass_non_attack",
-      .data$skill == "Dig" ~ "dig_regular",
-      .data$skq == "Cover =" ~ "cover_error",
-      .data$skill == "Cover" & dplyr::lead(.data$team, 1) != .data$team & dplyr::lead(.data$skill, 1) == "Attack" ~ "dig_overpass_attack", # keeping these - Chad's code implies equivalent
-      .data$skill == "Cover" & dplyr::lead(.data$team, 1) != .data$team & dplyr::lead(.data$skill, 1) != "Attack" ~ "dig_overpass_non_attack",
-      .data$skill == "Cover" ~ "cover_regular",
-      .data$skq == "Freeball =" ~ "freeball_error",
-      .data$skill == "Freeball" & dplyr::lead(.data$team, 1) != .data$team & dplyr::lead(.data$skill, 1) == "Attack" ~ "freeball_overpass_attack",
-      .data$skill == "Freeball" & dplyr::lead(.data$team, 1) != .data$team & dplyr::lead(.data$skill, 1) != "Attack" ~ "freeball_overpass_non_attack",
-      .data$skill == "Freeball" ~ "freeball_regular",
-      TRUE ~ NA_character_
+    output_type = data.table::fcase(
+      skq == "Serve #", "serve_ace",
+      skq == "Serve =", "serve_error",
+      skill == "Serve" & team == data.table::shift(team, -2) & data.table::shift(skill, -2) == "Attack", "serve_overpass_attack",
+      skill == "Serve" & team == data.table::shift(team, -2) & data.table::shift(skill, -2) != "Attack", "serve_overpass_non_attack",
+      skill == "Serve", "serve_regular",
+      skq == "Reception =", "reception_error",
+      skill == "Reception" & team != data.table::shift(team, -1) & data.table::shift(skill, -1) == "Attack", "reception_overpass_attack",
+      skill == "Reception" & team != data.table::shift(team, -1) & data.table::shift(skill, -1) != "Attack", "reception_overpass_non_attack",
+      skill == "Reception", "reception_regular",
+      skq == "Set =", "set_error",
+      skq == "Set -", "set_poor",
+      skill == "Set", "set_regular",
+      skq == "Attack #", "attack_kill",
+      skq == "Attack =", "attack_error",
+      skq == "Attack /", "attack_blocked",
+      skill == "Attack" & data.table::shift(skill, -1) == "Block" & team == data.table::shift(team, -2) & team != data.table::shift(team, -3), "attack_covered_overpass",
+      skill == "Attack" & data.table::shift(skill, -1) == "Block" & team == data.table::shift(team, -2), "attack_covered",
+      skill == "Attack" & data.table::shift(skill, -1) == "Block" & team != data.table::shift(team, -2) & team == data.table::shift(team, -3) & data.table::shift(skill, -3) == "Attack", "attack_block_into_overpass_attack",
+      skill == "Attack" & data.table::shift(skill, -1) == "Block" & team != data.table::shift(team, -2) & team == data.table::shift(team, -3) & data.table::shift(skill, -3) != "Attack", "attack_block_into_overpass_non_attack",
+      skill == "Attack" & data.table::shift(skill, -1) == "Block", "attack_block_regular",
+      skill == "Attack" & team != data.table::shift(team, -1) & team == data.table::shift(team, -2) & data.table::shift(skill, -2) == "Attack", "attack_into_overpass_attack",
+      skill == "Attack" & team != data.table::shift(team, -1) & team == data.table::shift(team, -2) & data.table::shift(skill, -2) != "Attack", "attack_into_overpass_non_attack",
+      skill == "Attack" & team == data.table::shift(team, -1) & point_id == data.table::shift(point_id, -1), "attack_incorrect_tagging",
+      skill == "Attack", "attack_regular",
+      skq == "Block #", "block_stuff",
+      skq == "Block =", "block_out",
+      skq == "Block !", "block_into_dig_error",
+      skill == "Block" & team != data.table::shift(team, -1), "block_covered",
+      skill == "Block", "block_regular",
+      skq == "Dig =", "dig_error",
+      skill == "Dig" & team != data.table::shift(team, -1) & data.table::shift(skill, -1) == "Attack", "dig_overpass_attack",
+      skill == "Dig" & team != data.table::shift(team, -1) & data.table::shift(skill, -1) != "Attack", "dig_overpass_non_attack",
+      skill == "Dig", "dig_regular",
+      skq == "Cover = ", "cover_error",
+      skill == "Cover" & team != data.table::shift(team, -1) & data.table::shift(skill, -1) == "Attack", "dig_overpass_attack",
+      skill == "Cover" & team != data.table::shift(team, -1) & data.table::shift(skill, -1) != "Attack", "dig_overpass_non_attack",
+      skill == "Cover", "cover_regular",
+      skq == "Freeball =", "freeball_error",
+      skill == "Freeball" & team != data.table::shift(team, -1) & data.table::shift(skill, -1) == "Attack", "freeball_overpass_attack",
+      skill == "Freeball" & team != data.table::shift(team, -1) & data.table::shift(skill, -1) != "Attack", "freeball_overpass_non_attack",
+      skill == "Freeball", "freeball_regular",
+      default = NA_character_
     )
-  )
+  )]
 
-  output <- output |> dplyr::mutate(
-    input_type = dplyr::if_else(is.na(.data$input_type) & .data$team == dplyr::lag(.data$team, 1), dplyr::lag(.data$input_type, 1), .data$input_type)
-  )
+  # output <-  plays |> dplyr::mutate(
+  #   input_type = dplyr::case_when(
+  #     .data$skill == "Serve" ~ "serve_baseline",
+  #     .data$skill == "Reception" ~ "reception_baseline",
+  #     .data$skill == "Set" ~ "set_regular",
+  #     .data$skill == "Attack" & dplyr::lag(.data$team, 1) != .data$team ~ "attack_overpass",
+  #     .data$skill == "Attack" & dplyr::lag(.data$team, 1) == .data$team & dplyr::lag(.data$skill != "Set") ~ "attack_weird", # attack on two
+  #     .data$skill == "Attack" & dplyr::lag(.data$team, 1) == .data$team & dplyr::lag(.data$skq == "Set -") ~ "attack_poor_set",
+  #     .data$skill == "Attack" & dplyr::lag(.data$team, 1) == .data$team & dplyr::lag(.data$skill, 1) == "Set"  ~ "attack_regular",
+  #     .data$skill == "Block" & dplyr::lag(.data$team, 2) == .data$team & dplyr::lag(.data$team, 1) != .data$team & dplyr::lag(.data$skill, 1) == "Attack" ~ "block_overpass",
+  #     .data$skill == "Block" & dplyr::lag(.data$team, 1) != .data$team & dplyr::lag(.data$skill, 1) != "Attack" ~ "block_weird",
+  #     .data$skill == "Block" & dplyr::lag(.data$team, 1) != .data$team & dplyr::lag(.data$skill, 1) == "Attack" ~ "block_regular",
+  #     .data$skill == "Dig" & dplyr::lag(.data$team, 1) != .data$team & dplyr::lag(.data$skill, 1) == "Attack" & dplyr::lag(.data$team, 2) == .data$team ~ "dig_overpass",
+  #     .data$skill == "Dig" & dplyr::lag(.data$team, 1) == .data$team & dplyr::lag(.data$skill, 1) == "Block" ~ "dig_blocktouch",
+  #     .data$skill == "Cover" & dplyr::lag(.data$team) != .data$team & dplyr::lag(.data$skill) == "Block" ~ "cover_blocktouch",
+  #     .data$skill == "Dig" & dplyr::lag(.data$skill) != "Block" & dplyr::lag(.data$skill) != "Attack" ~ "dig_weird",
+  #     .data$skill == "Dig" & dplyr::lag(.data$team) != .data$team & dplyr::lag(.data$skill) == "Attack" & dplyr::lag(.data$team, 2) != .data$team ~ "dig_regular",
+  #     .data$skill == "Freeball" ~ "freeball_baseline",
+  #     TRUE ~ NA_character_
+  #   ),
+  #   output_type = dplyr::case_when(
+  #     .data$skq == "Serve #" ~ "serve_ace",
+  #     .data$skq == "Serve =" ~ "serve_error",
+  #     .data$skill == "Serve" & dplyr::lead(.data$team, 2) == .data$team & dplyr::lead(.data$skill, 2) == "Attack" ~ "serve_overpass_attack",
+  #     .data$skill == "Serve" & dplyr::lead(.data$team, 2) == .data$team & dplyr::lead(.data$skill, 2) != "Attack" ~ "serve_overpass_non_attack",
+  #     .data$skill == "Serve"  ~ "serve_regular",
+  #     .data$skq == "Reception =" ~ "reception_error",
+  #     .data$skill == "Reception" & dplyr::lead(.data$team, 1) != .data$team & dplyr::lead(.data$skill, 1) == "Attack" ~ "reception_overpass_attack",
+  #     .data$skill == "Reception" & dplyr::lead(.data$team, 1) != .data$team & dplyr::lead(.data$skill, 1) != "Attack" ~ "reception_overpass_non_attack",
+  #     .data$skill == "Reception" ~ "reception_regular",
+  #     .data$skq == "Set =" ~ "set_error",
+  #     .data$skq == "Set -" ~ "set_poor",
+  #     .data$skill == "Set" ~ "set_regular",
+  #     .data$skq == "Attack #" ~ "attack_kill",
+  #     .data$skq == "Attack =" ~ "attack_error",
+  #     .data$skq == "Attack /" ~ "attack_blocked",
+  #     .data$skq == "Attack" & dplyr::lead(.data$skill, 1) == "Block" & dplyr::lead(.data$team, 2) == .data$team & dplyr::lead(.data$team, 3) != .data$team ~ "attack_covered_overpass",
+  #     .data$skq == "Attack" & dplyr::lead(.data$skill, 1) == "Block" & dplyr::lead(.data$team, 2) == .data$team ~ "attack_covered",
+  #     .data$skill == "Attack" & dplyr::lead(.data$skill, 1) == "Block" & dplyr::lead(.data$team, 2) != .data$team & dplyr::lead(.data$team, 3) == .data$team & dplyr::lead(.data$skill, 3) == "Attack" ~ "attack_block_into_overpass_attack",
+  #     .data$skill == "Attack" & dplyr::lead(.data$skill, 1) == "Block" & dplyr::lead(.data$team, 2) != .data$team & dplyr::lead(.data$team, 3) == .data$team & dplyr::lead(.data$skill, 3) != "Attack" ~ "attack_block_into_overpass_non_attack",
+  #     .data$skill == "Attack" & dplyr::lead(.data$skill, 1) == "Block" ~ "attack_block_regular",
+  #     .data$skill == "Attack" & dplyr::lead(.data$team, 2) == .data$team & dplyr::lead(.data$team) != .data$team & dplyr::lead(.data$skill, 2) == "Attack" ~ "attack_into_overpass_attack",
+  #     .data$skill == "Attack" & dplyr::lead(.data$team, 2) == .data$team & dplyr::lead(.data$team) != .data$team & dplyr::lead(.data$skill, 2) != "Attack" ~ "attack_into_overpass_non_attack",
+  #     .data$skill == "Attack" & dplyr::lead(.data$team, 1) == .data$team & dplyr::lead(.data$point_id, 1) == .data$point_id ~ "attack_incorrect_tagging",
+  #     .data$skill == "Attack" ~ "attack_regular",
+  #     .data$skq == "Block #" ~ "block_stuff",
+  #     .data$skq == "Block =" ~ "block_out",
+  #     .data$skq == "Block !" ~ "block_into_dig_error",
+  #     .data$skill == "Block" & dplyr::lead(.data$team, 1) != .data$team ~ "block_covered",
+  #     .data$skill == "Block" ~ "block_regular",
+  #     .data$skq == "Dig =" ~ "dig_error",
+  #     .data$skill == "Dig" & dplyr::lead(.data$team, 1) != .data$team & dplyr::lead(.data$skill, 1) == "Attack" ~ "dig_overpass_attack",
+  #     .data$skill == "Dig" & dplyr::lead(.data$team, 1) != .data$team & dplyr::lead(.data$skill, 1) != "Attack" ~ "dig_overpass_non_attack",
+  #     .data$skill == "Dig" ~ "dig_regular",
+  #     .data$skq == "Cover =" ~ "cover_error",
+  #     .data$skill == "Cover" & dplyr::lead(.data$team, 1) != .data$team & dplyr::lead(.data$skill, 1) == "Attack" ~ "dig_overpass_attack", # keeping these - Chad's code implies equivalent
+  #     .data$skill == "Cover" & dplyr::lead(.data$team, 1) != .data$team & dplyr::lead(.data$skill, 1) != "Attack" ~ "dig_overpass_non_attack",
+  #     .data$skill == "Cover" ~ "cover_regular",
+  #     .data$skq == "Freeball =" ~ "freeball_error",
+  #     .data$skill == "Freeball" & dplyr::lead(.data$team, 1) != .data$team & dplyr::lead(.data$skill, 1) == "Attack" ~ "freeball_overpass_attack",
+  #     .data$skill == "Freeball" & dplyr::lead(.data$team, 1) != .data$team & dplyr::lead(.data$skill, 1) != "Attack" ~ "freeball_overpass_non_attack",
+  #     .data$skill == "Freeball" ~ "freeball_regular",
+  #     TRUE ~ NA_character_
+  #   )
+  # )
 
-  return(output)
+  plays[, `:=`(
+    input_type = data.table::fifelse(
+      is.na(input_type) & team == data.table::shift(team, 1), data.table::shift(input_type, 1), input_type
+    )
+  )]
 
+  #return(output)
+  return(plays)
 }
 
 #' Add touch coordinates
