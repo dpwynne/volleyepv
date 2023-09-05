@@ -547,42 +547,75 @@ vepv_touch_input_output <- function(plays){
 #' @export
 
 vepv_touch_coordinates <- function(plays){
-  output <- plays |> dplyr::mutate(
-    input_coord_x = dplyr::case_when(
-      .data$input_type == "set_regular" ~ .data$start_coordinate_x,
-      .data$input_type == "attack_regular" ~ dplyr::lag(.data$start_coordinate_x, 1),
-      .data$input_type == "block_regular" ~ dplyr::lag(.data$start_coordinate_x, 2),
-      TRUE ~ NA_real_
+
+  plays[,`:=`(
+    input_coord_x = data.table::fcase(
+      input_type == "set_regular", start_coordinate_x,
+      input_type == "attack_regular", data.table::shift(start_coordinate_x, 1),
+      input_type == "block_regular", data.table::shift(start_coordinate_x, 2),
+      default = NA_real_
     ),
-    input_coord_y = dplyr::case_when(
-      .data$input_type == "set_regular" ~ .data$start_coordinate_y,
-      .data$input_type == "attack_regular" ~ dplyr::lag(.data$start_coordinate_y, 1),
-      .data$input_type == "block_regular" ~ dplyr::lag(.data$start_coordinate_y, 2),
-      TRUE ~ NA_real_
+    input_coord_y = data.table::fcase(
+      input_type == "set_regular", start_coordinate_x,
+      input_type == "attack_regular", data.table::shift(start_coordinate_y, 1),
+      input_type == "block_regular", data.table::shift(start_coordinate_y, 2),
+      default = NA_real_
     ),
-    output_coord_x = dplyr::case_when(
-      .data$output_type %in% c("reception_regular", "dig_regular", "freeball_regular") ~ dplyr::lead(.data$start_coordinate_x, 1),
-     .data$output_type %in% c("serve_regular", "reception_overpass_non_attack", "attack_covered", "attack_regular", "attack_incorrect_tagging", "block_regular", "block_covered", "dig_overpass_non_attack", "freeball_overpass_non_attack") ~ dplyr::lead(.data$start_coordinate_x, 2),
-     .data$output_type %in% c("serve_overpass_non_attack", "attack_regular_block", "attack_into_overpass_non_attack") ~ dplyr::lead(.data$start_coordinate_x, 3),
-     .data$output_type == "attack_block_into_overpass_non_attack" ~ dplyr::lead(.data$start_coordinate_x, 4),
-     TRUE ~ NA_real_
+    output_coord_x = data.table::fcase(
+      data.table::`%chin%`(output_type, c("reception_regular", "dig_regular", "freeball_regular")), data.table::shift(start_coordinate_x, -1),
+      data.table::`%chin%`(output_type, c("serve_regular", "reception_overpass_non_attack", "attack_covered", "attack_regular", "attack_incorrect_tagging", "block_regular", "block_covered", "dig_overpass_non_attack", "freeball_overpass_non_attack")), data.table::shift(start_coordinate_x, 2),
+      data.table::`%chin%`(output_type, c("serve_overpass_non_attack", "attack_regular_block", "attack_into_overpass_non_attack")), data.table::shift(start_coordinate_x, -3),
+      output_type == "attack_block_into_overpass_non_attack", data.table::shift(start_coordinate_x, -4),
+      default = NA_real_
     ),
-    output_coord_y = dplyr::case_when(
-      .data$output_type %in% c("reception_regular", "dig_regular", "freeball_regular") ~ dplyr::lead(.data$start_coordinate_y, 1),
-      .data$output_type %in% c("serve_regular", "reception_overpass_non_attack", "attack_covered", "attack_regular", "attack_incorrect_tagging", "block_regular", "block_covered", "dig_overpass_non_attack", "freeball_overpass_non_attack") ~ dplyr::lead(.data$start_coordinate_y, 2),
-      .data$output_type %in% c("serve_overpass_non_attack", "attack_regular_block", "attack_into_overpass_non_attack") ~ dplyr::lead(.data$start_coordinate_y, 3),
-      .data$output_type == "attack_block_into_overpass_non_attack" ~ dplyr::lead(.data$start_coordinate_y, 4),
-      TRUE ~ NA_real_
+    output_coord_y = data.table::fcase(
+      data.table::`%chin%`(output_type, c("reception_regular", "dig_regular", "freeball_regular")), data.table::shift(start_coordinate_y, -1),
+      data.table::`%chin%`(output_type, c("serve_regular", "reception_overpass_non_attack", "attack_covered", "attack_regular", "attack_incorrect_tagging", "block_regular", "block_covered", "dig_overpass_non_attack", "freeball_overpass_non_attack")), data.table::shift(start_coordinate_y, 2),
+      data.table::`%chin%`(output_type, c("serve_overpass_non_attack", "attack_regular_block", "attack_into_overpass_non_attack")), data.table::shift(start_coordinate_y, -3),
+      output_type == "attack_block_into_overpass_non_attack", data.table::shift(start_coordinate_y, -4),
+      default = NA_real_
     )
-  )
+  )]
+
+  # output <- plays |> dplyr::mutate(
+  #   input_coord_x = dplyr::case_when(
+  #     .data$input_type == "set_regular" ~ .data$start_coordinate_x,
+  #     .data$input_type == "attack_regular" ~ dplyr::lag(.data$start_coordinate_x, 1),
+  #     .data$input_type == "block_regular" ~ dplyr::lag(.data$start_coordinate_x, 2),
+  #     TRUE ~ NA_real_
+  #   ),
+  #   input_coord_y = dplyr::case_when(
+  #     .data$input_type == "set_regular" ~ .data$start_coordinate_y,
+  #     .data$input_type == "attack_regular" ~ dplyr::lag(.data$start_coordinate_y, 1),
+  #     .data$input_type == "block_regular" ~ dplyr::lag(.data$start_coordinate_y, 2),
+  #     TRUE ~ NA_real_
+  #   ),
+  #   output_coord_x = dplyr::case_when(
+  #     .data$output_type %in% c("reception_regular", "dig_regular", "freeball_regular") ~ dplyr::lead(.data$start_coordinate_x, 1),
+  #    .data$output_type %in% c("serve_regular", "reception_overpass_non_attack", "attack_covered", "attack_regular", "attack_incorrect_tagging", "block_regular", "block_covered", "dig_overpass_non_attack", "freeball_overpass_non_attack") ~ dplyr::lead(.data$start_coordinate_x, 2),
+  #    .data$output_type %in% c("serve_overpass_non_attack", "attack_regular_block", "attack_into_overpass_non_attack") ~ dplyr::lead(.data$start_coordinate_x, 3),
+  #    .data$output_type == "attack_block_into_overpass_non_attack" ~ dplyr::lead(.data$start_coordinate_x, 4),
+  #    TRUE ~ NA_real_
+  #   ),
+  #   output_coord_y = dplyr::case_when(
+  #     .data$output_type %in% c("reception_regular", "dig_regular", "freeball_regular") ~ dplyr::lead(.data$start_coordinate_y, 1),
+  #     .data$output_type %in% c("serve_regular", "reception_overpass_non_attack", "attack_covered", "attack_regular", "attack_incorrect_tagging", "block_regular", "block_covered", "dig_overpass_non_attack", "freeball_overpass_non_attack") ~ dplyr::lead(.data$start_coordinate_y, 2),
+  #     .data$output_type %in% c("serve_overpass_non_attack", "attack_regular_block", "attack_into_overpass_non_attack") ~ dplyr::lead(.data$start_coordinate_y, 3),
+  #     .data$output_type == "attack_block_into_overpass_non_attack" ~ dplyr::lead(.data$start_coordinate_y, 4),
+  #     TRUE ~ NA_real_
+  #   )
+  # )
 
 
-  output <- output |> dplyr::mutate(
-    output_coord_x = dplyr::if_else(.data$input_type == "set_regular", .data$input_coord_x, .data$output_coord_x),
-    output_coord_y = dplyr::if_else(.data$input_type == "set_regular", .data$input_coord_y, .data$output_coord_y)
-  )
+  plays[input_type == "set_regular",c("output_coord_x", "output_coord_y") := .(input_coord_x, input_coord_y)]
 
-  return(output)
+  # output <- output |> dplyr::mutate(
+  #   output_coord_x = dplyr::if_else(.data$input_type == "set_regular", .data$input_coord_x, .data$output_coord_x),
+  #   output_coord_y = dplyr::if_else(.data$input_type == "set_regular", .data$input_coord_y, .data$output_coord_y)
+  # )
+
+  # return(output)
+  return(plays)
 }
 
 #' Add k-code
